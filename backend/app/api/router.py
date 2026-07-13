@@ -1,8 +1,9 @@
 from fastapi import APIRouter
 
-from app.api import builder, health, worlds
+from app.api import builder, health, simulation, worlds
 
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["health"])
 api_router.include_router(worlds.router)
 api_router.include_router(builder.router)
+api_router.include_router(simulation.router)
