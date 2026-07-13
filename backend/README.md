@@ -51,3 +51,11 @@ uv run pytest
   - `GET /worlds/builder/session/{id}/progress`
   - `POST /worlds/builder/session/{id}/go-back`
   - `POST /worlds/builder/session/{id}/finalize`（写 World + Character + Location 到 DB，返回健康报告）
+
+## M3 单角色模拟已实现
+
+- ActionProposal 行动提案（intent/action_type/target/expectation/dialogue）
+- CharacterAgent（感知→决策→LLM 结构化提案，错误降级为 wait）
+- Narrator 叙述者（提案→文学叙述 Event，错误降级模板）
+- Simulator 模拟引擎（单角色 tick：决策→叙述→推进时钟→事件历史）
+- API：`POST /worlds/{id}/simulate/start`、`POST /step`、`GET /status`
