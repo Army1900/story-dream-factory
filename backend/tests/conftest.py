@@ -30,6 +30,19 @@ def session(memory_db_url):
 
 
 @pytest.fixture()
+def worlds_tmp(tmp_path, monkeypatch):
+    """把 WORLDS_DIR 指向临时目录并创建。
+
+    所有 API 模块运行时调用 ``get_settings()``（每次新建 Settings()），
+    pydantic-settings 会读取环境变量，因此 setenv 对所有模块生效。
+    """
+    worlds = tmp_path / "worlds"
+    worlds.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("WORLDS_DIR", str(worlds))
+    return worlds
+
+
+@pytest.fixture()
 def mock_llm(monkeypatch):
     """Mock LLM 网关，避免真实 API 调用。"""
     mock = MagicMock()
@@ -44,23 +57,8 @@ def mock_llm(monkeypatch):
 
 
 @pytest.fixture()
-def client_fixture(tmp_path):
-    from app.api.deps import get_session, set_engine
+def client_fixture(tmp_path, worlds_tmp):
     from app.main import app
 
-    engine = create_engine(
-        f"sqlite:///{tmp_path / 'builder.db'}",
-        connect_args={"check_same_thread": False},
-    )
-    SQLModel.metadata.create_all(engine)
-    set_engine(engine)
-
-    def _gs():
-        with Session(engine) as s:
-            yield s
-
-    app.dependency_overrides[get_session] = _gs
     with TestClient(app) as c:
         yield c
-    app.dependency_overrides.clear()
-    engine.dispose()
