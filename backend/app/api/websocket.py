@@ -1,7 +1,8 @@
 from __future__ import annotations
-import json
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from app.api.simulation import _SIMULATORS, _get_llm
+
+from app.api.simulation import get_or_load_sim
 
 router = APIRouter(tags=["websocket"])
 
@@ -14,34 +15,39 @@ async def world_websocket(websocket: WebSocket, world_id: str):
             data = await websocket.receive_json()
             action = data.get("action", "")
             if action == "step":
-                sim = None
-                for s in _SIMULATORS.values():
-                    if s.world.id == world_id:
-                        sim = s
-                        break
+                # 内存没有就从文件加载（重启后断点续跑）
+                sim = get_or_load_sim(world_id)
                 if sim:
                     events = await sim.tick()
-                    await websocket.send_json({
-                        "tick": sim.world.clock_tick,
-                        "events": [
-                            {"tick": e.tick, "type": e.type.value if hasattr(e.type, "value") else str(e.type),
-                             "narration": e.narration, "participants": e.participants}
-                            for e in events
-                        ],
-                    })
+                    await websocket.send_json(
+                        {
+                            "tick": sim.world.clock_tick,
+                            "events": [
+                                {
+                                    "tick": e.tick,
+                                    "type": e.type.value
+                                    if hasattr(e.type, "value")
+                                    else str(e.type),
+                                    "narration": e.narration,
+                                    "participants": e.participants,
+                                }
+                                for e in events
+                            ],
+                        }
+                    )
                 else:
                     await websocket.send_json({"error": "no simulation"})
             elif action == "status":
-                sim = None
-                for s in _SIMULATORS.values():
-                    if s.world.id == world_id:
-                        sim = s
-                        break
+                sim = get_or_load_sim(world_id)
                 if sim:
-                    await websocket.send_json({
-                        "tick": sim.world.clock_tick,
-                        "total_events": len(sim.event_history),
-                    })
+                    await websocket.send_json(
+                        {
+                            "tick": sim.world.clock_tick,
+                            "total_events": len(sim.event_history),
+                        }
+                    )
+                else:
+                    await websocket.send_json({"error": "no simulation"})
             elif action == "disconnect":
                 break
     except WebSocketDisconnect:
