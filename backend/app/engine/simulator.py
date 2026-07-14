@@ -8,6 +8,7 @@ from app.physics.rules import update_relationship
 from app.models.world import World
 from app.models.character import Character
 from app.models.event import Event
+from app.models.enums import EventType
 
 
 class Simulator:
@@ -22,6 +23,7 @@ class Simulator:
         self.agents = [CharacterAgent(c, llm_gateway) for c in characters]
         self.event_history: list[Event] = []
         self.character_memories: dict[str, list] = {}
+        self.directives: list[dict] = []
 
     def _build_snapshot(self) -> dict:
         locs = {}
@@ -36,6 +38,35 @@ class Simulator:
 
     async def tick(self) -> list[Event]:
         current_tick = self.world.clock_tick
+
+        # 处理导演注入（在角色决策前）
+        injected_events: list[Event] = []
+        while self.directives:
+            d = self.directives.pop(0)
+            if d["type"] == "inject_event":
+                evt = Event(
+                    world_id=self.world.id, tick=current_tick,
+                    type=EventType.director,
+                    participants=[], location_id="",
+                    payload=d["payload"],
+                    narration=d["payload"].get("description", "导演介入"),
+                )
+                injected_events.append(evt)
+                self.event_history.append(evt)
+            elif d["type"] == "set_goal":
+                target_name = d.get("target", "")
+                for c in self.characters:
+                    if c.name == target_name:
+                        c.goals = c.goals or {}
+                        c.goals.update(d["payload"])
+            elif d["type"] == "modify_world":
+                key = d["payload"].get("key", "")
+                value = d["payload"].get("value")
+                if key == "state_flags" and isinstance(value, dict):
+                    self.world.state_flags.update(value)
+                elif key == "rules" and isinstance(value, list):
+                    self.world.rules = value
+
         snapshot = self._build_snapshot()
 
         # ① 角色并行决策
@@ -57,7 +88,7 @@ class Simulator:
         self._update_relationships(resolved_actions)
 
         # ④ 世界意识叙述（批量）
-        events: list[Event] = []
+        events: list[Event] = list(injected_events)
         for resolved in resolved_actions:
             event = await self.narrator.narrate(
                 proposal=resolved.proposal,
