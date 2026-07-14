@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     # 存储
     database_url: str = "sqlite:///./data/story.db"
     image_storage_path: str = "./data/images"
+    worlds_dir: str = "./worlds"
 
     # LLM 密钥
     zhipu_api_key: str = ""
