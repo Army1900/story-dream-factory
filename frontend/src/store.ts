@@ -14,6 +14,7 @@ export interface World {
   initial_state: Record<string, unknown>
   llm_config: Record<string, unknown>
   created_at: string
+  characters?: string[]
 }
 
 export interface SimEvent {
@@ -51,6 +52,7 @@ interface State {
   stepping: boolean
   tick: number
   events: SimEvent[]
+  characters: string[]
   simError: string | null
   // create world
   creating: boolean
@@ -75,6 +77,7 @@ export const useStore = create<State>((set, get) => ({
   stepping: false,
   tick: 0,
   events: [],
+  characters: [],
   simError: null,
   creating: false,
 
@@ -84,6 +87,7 @@ export const useStore = create<State>((set, get) => ({
       selectedWorld: null,
       simStarted: false,
       events: [],
+      characters: [],
       tick: 0,
       simError: null,
     }),
@@ -94,6 +98,7 @@ export const useStore = create<State>((set, get) => ({
       selectedWorld: w,
       simStarted: false,
       events: [],
+      characters: w.characters ?? [],
       tick: w.clock_tick ?? 0,
       simError: null,
     }),
@@ -132,7 +137,7 @@ export const useStore = create<State>((set, get) => ({
       if (!r.ok) throw new Error(`HTTP ${r.status}`)
       const w = (await r.json()) as World
       await get().refreshWorlds()
-      set({ selectedWorld: w, view: 'sim', simStarted: false, events: [], tick: 0 })
+      set({ selectedWorld: w, view: 'sim', simStarted: false, events: [], tick: 0, characters: w.characters ?? [] })
     } finally {
       set({ creating: false })
     }
@@ -153,6 +158,7 @@ export const useStore = create<State>((set, get) => ({
         simStarted: true,
         tick: j.tick ?? w.clock_tick ?? 0,
         events: [],
+        characters: j.characters ?? [],
         simError: null,
       })
     } catch (e) {

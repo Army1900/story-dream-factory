@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useStore, type World } from './store'
+import { CanvasBackground } from './CanvasBackground'
 import './App.css'
 
 function App() {
@@ -66,6 +67,7 @@ function HomeView() {
 
   return (
     <>
+      <CanvasBackground />
       <TopBar />
       <div className="home-wrap">
         <div className="home-kicker">Story Dream Factory</div>
@@ -86,7 +88,12 @@ function HomeView() {
       </div>
 
       <div className="home-list">
-        {showCreate && <CreateForm onDone={() => setShowCreate(false)} />}
+        {showCreate && (
+          <BuilderFlow
+            onDone={() => setShowCreate(false)}
+            onCancel={() => setShowCreate(false)}
+          />
+        )}
 
         <div className="home-section">
           你的世界 <span className="count">· {worlds.length}</span>
@@ -138,138 +145,911 @@ function WorldCard({ world, onClick }: { world: World; onClick: () => void }) {
   )
 }
 
-function CreateForm({ onDone }: { onDone: () => void }) {
-  const createWorld = useStore((s) => s.createWorld)
-  const creating = useStore((s) => s.creating)
-  const [name, setName] = useState('')
-  const [vision, setVision] = useState('')
-  const [setting, setSetting] = useState('')
-  const [rulesText, setRulesText] = useState('')
+// ============ World Builder (对话式世界构建) ============
+type BuilderPhase = 'select' | 'chat'
+type ChatMsg = { role: 'user' | 'assistant'; content: string }
 
-  const submit = async () => {
-    if (!name.trim()) return
-    const rules = rulesText
-      .split('\n')
-      .map((r) => r.trim())
-      .filter(Boolean)
-    await createWorld({ name: name.trim(), vision, setting, rules })
-    onDone()
+const BUILDER_STAGES: { key: string; name: string; desc: string }[] = [
+  { key: 'vision', name: '愿景', desc: '类型与基调' },
+  { key: 'setting', name: '世界观', desc: '时代与核心矛盾' },
+  { key: 'rules', name: '规则', desc: '世界法则' },
+  { key: 'locations', name: '地点', desc: '抽象地图' },
+  { key: 'characters', name: '角色', desc: '性格·目标' },
+  { key: 'inciting', name: '开场', desc: '引爆事件' },
+  { key: 'finalize', name: '定稿', desc: '健康检查·开拍' },
+]
+
+const BUILDER_TEMPLATES = [
+  { idx: 0, name: '中世纪奇幻', en: 'Fantasy', desc: '魔法衰落中的王国', glyph: '奇', grad: 'linear-gradient(135deg,#3a4a6b,#1a2238)' },
+  { idx: 1, name: '赛博朋克', en: 'Cyberpunk', desc: '2087 企业垄断的未来', glyph: '霓', grad: 'linear-gradient(135deg,#6b3a5a,#381a2a)' },
+  { idx: 2, name: '东方仙侠', en: 'Xianxia', desc: '仙门林立的修仙界', glyph: '霄', grad: 'linear-gradient(135deg,#3a5a3a,#1a2818)' },
+]
+
+const BUILDER_HEADINGS: { h: ReactNode; d: string }[] = [
+  { h: <>讲一个怎样的 <em>故事</em>？</>, d: '先定下类型、基调与规模——这也决定世界的视觉风格基底。' },
+  { h: <>世界 <em>从何而来</em>？</>, d: '时代、世界设定，以及最核心的矛盾。' },
+  { h: <>世界 <em>遵循什么</em>？</>, d: '把模糊想法变成清晰、可执行的世界规则——它们会约束物理引擎。' },
+  { h: <>发生在 <em>哪里</em>？</>, d: '关键地点，以及它们之间如何连通。角色将在这些地点间移动。' },
+  { h: <>谁来 <em>登场</em>？</>, d: '为每个角色立传——性格、目标、关系。记得在角色之间埋下张力。' },
+  { h: <>从哪个 <em>瞬间</em> 开始？</>, d: '初始态势，以及一个打破平衡的引爆事件——开拍时作为 Tick 0 注入。' },
+  { h: <>准备好 <em>开拍</em> 了吗？</>, d: '一致性健康检查。通过即可开拍，世界将带着你的设定自主演化。' },
+]
+
+function arrLen(collected: Record<string, unknown>, key: string): number {
+  const v = collected[key]
+  return Array.isArray(v) ? v.length : 0
+}
+
+function BuilderFlow({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
+  const refreshWorlds = useStore((s) => s.refreshWorlds)
+  const openWorld = useStore((s) => s.openWorld)
+
+  const [phase, setPhase] = useState<BuilderPhase>('select')
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [stage, setStage] = useState<string>('vision')
+  const [messages, setMessages] = useState<ChatMsg[]>([])
+  const [checklist, setChecklist] = useState<Record<string, { covered: number; total: number }>>({})
+  const [collected, setCollected] = useState<Record<string, unknown>>({})
+  const [input, setInput] = useState('')
+  const [sending, setSending] = useState(false)
+  const [starting, setStarting] = useState(false)
+  const [finalizing, setFinalizing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [health, setHealth] = useState<{ passed: boolean; errors: string[]; warnings: string[] } | null>(null)
+
+  const chatRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' })
+  }, [messages, sending])
+
+  const currentStageIdx = Math.max(0, BUILDER_STAGES.findIndex((s) => s.key === stage))
+  const stageInfo = BUILDER_STAGES[currentStageIdx]
+  const heading = BUILDER_HEADINGS[currentStageIdx]
+
+  async function fetchProgress(sid: string) {
+    try {
+      const r = await fetch(`/worlds/builder/session/${sid}/progress`)
+      const j = await r.json()
+      if (j.checklist) setChecklist(j.checklist)
+      if (j.collected) setCollected(j.collected)
+      if (j.stage) setStage(j.stage)
+    } catch {
+      /* 进度查询失败不阻塞对话 */
+    }
   }
 
+  async function selectTemplate(idx: number) {
+    setStarting(true)
+    setError(null)
+    try {
+      const r = await fetch('/worlds/builder/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template_index: idx }),
+      })
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      const j = await r.json()
+      setSessionId(j.session_id)
+      setStage(j.stage)
+      setMessages([
+        { role: 'assistant', content: j.prompt_hint || `开始「${j.stage_title || '愿景'}」阶段。` },
+      ])
+      await fetchProgress(j.session_id)
+      setPhase('chat')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setStarting(false)
+    }
+  }
+
+  async function sendMessage(text: string) {
+    const sid = sessionId
+    const content = text.trim()
+    if (!sid || !content || sending || finalizing) return
+    setInput('')
+    setMessages((m) => [...m, { role: 'user', content }])
+    setSending(true)
+    setError(null)
+    try {
+      const r = await fetch(`/worlds/builder/session/${sid}/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: content }),
+      })
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      const j = await r.json()
+      if (j.reply) setMessages((m) => [...m, { role: 'assistant', content: j.reply }])
+      if (j.stage) setStage(j.stage)
+      await fetchProgress(sid)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSending(false)
+    }
+  }
+
+  async function goBack() {
+    const sid = sessionId
+    if (!sid || sending || finalizing || currentStageIdx === 0) return
+    setSending(true)
+    setError(null)
+    try {
+      const r = await fetch(`/worlds/builder/session/${sid}/go-back`, { method: 'POST' })
+      const j = await r.json()
+      if (j.stage) setStage(j.stage)
+      setMessages((m) => [
+        ...m,
+        {
+          role: 'assistant',
+          content: j.stage_title ? `回到「${j.stage_title}」阶段，可以重新描述。` : '已返回上一步。',
+        },
+      ])
+      await fetchProgress(sid)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSending(false)
+    }
+  }
+
+  // 后端仅支持 go-back，所以仅在向前回退阶段时可点击跳转
+  async function jumpToStage(targetIdx: number) {
+    const sid = sessionId
+    if (!sid || sending || finalizing || targetIdx >= currentStageIdx) return
+    setSending(true)
+    setError(null)
+    try {
+      let remaining = currentStageIdx - targetIdx
+      while (remaining > 0) {
+        const r = await fetch(`/worlds/builder/session/${sid}/go-back`, { method: 'POST' })
+        const j = await r.json()
+        if (j.stage) setStage(j.stage)
+        remaining -= 1
+      }
+      setMessages((m) => [
+        ...m,
+        { role: 'assistant', content: `已回到「${BUILDER_STAGES[targetIdx].name}」阶段，可以重新描述。` },
+      ])
+      await fetchProgress(sid)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSending(false)
+    }
+  }
+
+  async function finalize() {
+    const sid = sessionId
+    if (!sid || finalizing || sending) return
+    setFinalizing(true)
+    setError(null)
+    try {
+      const r = await fetch(`/worlds/builder/session/${sid}/finalize`, { method: 'POST' })
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      const j = await r.json()
+      if (j.error) {
+        setError(j.error)
+        return
+      }
+      setHealth(j.health)
+      const worldId = j.world_id
+      await refreshWorlds()
+      const w = useStore.getState().worlds.find((x) => x.id === worldId)
+      if (w) {
+        openWorld(w)
+        onDone()
+      } else {
+        setError('世界已创建，但未能从列表中读取。请返回主页手动打开。')
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setFinalizing(false)
+    }
+  }
+
+  // ---- 模板选择屏 ----
+  if (phase === 'select') {
+    return (
+      <div className="builder-overlay">
+        <header className="topbar">
+          <button className="back-btn" onClick={onCancel} title="返回主页">
+            ←
+          </button>
+          <div className="brand">
+            <span className="dot" />
+            <span className="name">新建世界</span>
+          </div>
+          <span className="spacer" />
+          <span className="builder-progress">
+            选择模板 · <b>第 0 / 7 步</b>
+          </span>
+        </header>
+        <div className="builder-select-wrap">
+          <div className="bm-label">世界构建助手</div>
+          <h2 className="builder-select-title">
+            从 <em>模板</em> 开始，或与 AI 自由构建
+          </h2>
+          <p className="builder-select-sub">
+            选一个预设模板会预填规则、地点与视觉风格，然后通过 7 步对话把世界讲清楚。
+          </p>
+          <div className="tpl-grid">
+            {BUILDER_TEMPLATES.map((t) => (
+              <button
+                key={t.idx}
+                className="tpl-card"
+                disabled={starting}
+                onClick={() => selectTemplate(t.idx)}
+              >
+                <div className="tpl-cover" style={{ background: t.grad }}>
+                  <span className="tpl-glyph">{t.glyph}</span>
+                </div>
+                <div className="tpl-body">
+                  <h3>
+                    {t.name}
+                    <em>{t.en}</em>
+                  </h3>
+                  <div className="tpl-desc">{t.desc}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+          {starting && (
+            <div className="loading" style={{ marginTop: 18 }}>
+              正在创建构建会话…
+            </div>
+          )}
+          {error && <div className="builder-error">⚠ {error}</div>}
+        </div>
+      </div>
+    )
+  }
+
+  // ---- 对话屏 ----
   return (
-    <div className="create-card">
-      <div className="bm-label">新建世界</div>
-      <h2>
-        讲一个怎样的 <em>故事</em>？
-      </h2>
-      <div className="field-label">名称</div>
-      <input
-        className="field-input"
-        placeholder="例如：艾尔德兰"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      <div className="field-label">愿景（一句话基调）</div>
-      <input
-        className="field-input"
-        placeholder="例如：魔法衰落的王国"
-        value={vision}
-        onChange={(e) => setVision(e.target.value)}
-      />
-      <div className="field-label">世界设定</div>
-      <textarea
-        className="field-textarea"
-        placeholder="时代、核心矛盾、地理…"
-        value={setting}
-        onChange={(e) => setSetting(e.target.value)}
-      />
-      <div className="field-label">世界规则（每行一条）</div>
-      <textarea
-        className="field-textarea"
-        placeholder={'魔法稀有，施法付代价\n誓言有约束力'}
-        value={rulesText}
-        onChange={(e) => setRulesText(e.target.value)}
-      />
-      <button
-        className="btn primary big"
-        disabled={creating || !name.trim()}
-        onClick={submit}
-      >
-        {creating ? '创建中…' : '创建并进入 →'}
-      </button>
+    <div className="builder-overlay">
+      <header className="topbar">
+        <button className="back-btn" onClick={onCancel} title="返回主页">
+          ←
+        </button>
+        <div className="brand">
+          <span className="dot" />
+          <span className="name">世界构建助手</span>
+        </div>
+        <span className="builder-progress">
+          新世界 · <b>第 {currentStageIdx + 1} / 7 步 · {stageInfo?.name}</b>
+        </span>
+        <span className="spacer" />
+      </header>
+      <div className="builder-wrap">
+        <aside className="builder-stages">
+          <div className="bs-title">世界构建 · 7 步</div>
+          {BUILDER_STAGES.map((s, i) => {
+            const done = i < currentStageIdx
+            const current = i === currentStageIdx
+            const cp = checklist[s.key]
+            const sub = cp ? `${s.desc} · ${cp.covered}/${cp.total}` : s.desc
+            const clickable = i < currentStageIdx
+            return (
+              <div
+                key={s.key}
+                className={'stage-item' + (current ? ' current' : done ? ' done' : '')}
+                onClick={() => clickable && jumpToStage(i)}
+                style={{ cursor: clickable ? 'pointer' : 'default' }}
+                title={clickable ? '点击回到此阶段' : ''}
+              >
+                <div className="num">{done ? '✓' : i + 1}</div>
+                <div className="txt">
+                  <div className="n">{s.name}</div>
+                  <div className="d">{sub}</div>
+                </div>
+                {i < BUILDER_STAGES.length - 1 && <div className="stage-line" />}
+              </div>
+            )
+          })}
+          <div className="bs-collected">
+            <div className="bs-c-title">已收集</div>
+            <div className="bs-c-item">
+              <span>规则</span>
+              <b>{arrLen(collected, 'rules')}</b>
+            </div>
+            <div className="bs-c-item">
+              <span>地点</span>
+              <b>{arrLen(collected, 'locations')}</b>
+            </div>
+            <div className="bs-c-item">
+              <span>角色</span>
+              <b>{arrLen(collected, 'characters')}</b>
+            </div>
+          </div>
+        </aside>
+
+        <div className="builder-main">
+          <div className="bm-head">
+            <div className="bm-label">
+              第 {currentStageIdx + 1} 步 · {stageInfo?.name}
+            </div>
+            <h2>{heading?.h}</h2>
+            <div className="desc">{heading?.d}</div>
+          </div>
+
+          <div className="chat" ref={chatRef}>
+            {messages.map((m, i) => (
+              <div key={i} className={'msg ' + (m.role === 'user' ? 'me' : 'ai')}>
+                <div className="who">{m.role === 'user' ? '你' : '世界构建助手'}</div>
+                {m.content}
+              </div>
+            ))}
+            {sending && (
+              <div className="msg ai">
+                <div className="who">世界构建助手</div>
+                <span className="builder-typing">思考中…</span>
+              </div>
+            )}
+          </div>
+
+          {health && (
+            <div className="builder-health">
+              <div className="bh-title">健康检查 · {health.passed ? '通过' : '存在问题'}</div>
+              {health.errors.map((e, i) => (
+                <div key={'e' + i} className="bh-item bad">
+                  ✕ {e}
+                </div>
+              ))}
+              {health.warnings.map((w, i) => (
+                <div key={'w' + i} className="bh-item warn">
+                  ! {w}
+                </div>
+              ))}
+              {health.errors.length === 0 && health.warnings.length === 0 && (
+                <div className="bh-item ok">✓ 一切就绪，可以进入世界。</div>
+              )}
+            </div>
+          )}
+
+          {error && <div className="builder-error">⚠ {error}</div>}
+
+          <div className="builder-input">
+            <input
+              placeholder={
+                sending
+                  ? '助手正在思考…'
+                  : `描述「${stageInfo?.name ?? ''}」…（说"完成"进入下一步）`
+              }
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  sendMessage(input)
+                }
+              }}
+              disabled={sending || finalizing}
+            />
+            <button
+              className="btn"
+              onClick={() => sendMessage(input)}
+              disabled={sending || finalizing || !input.trim()}
+            >
+              发送
+            </button>
+            <button
+              className="btn"
+              onClick={goBack}
+              disabled={sending || finalizing || currentStageIdx === 0}
+              title="返回上一步"
+            >
+              ↑ 返回
+            </button>
+          </div>
+
+          <div className="step-actions">
+            <button
+              className="btn"
+              onClick={() => sendMessage('完成，进入下一步')}
+              disabled={sending || finalizing}
+            >
+              完成，进入下一步 →
+            </button>
+            <button
+              className="btn primary"
+              onClick={finalize}
+              disabled={finalizing || sending}
+            >
+              {finalizing ? '定稿中…' : '定稿并进入世界 ▸'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
 
 // ============ SIM ============
+type Dimension = 'worldview' | 'workbench' | 'chronicle' | 'cast' | 'story'
+
 function SimView() {
+  const [dim, setDim] = useState<Dimension>('workbench')
   const world = useStore((s) => s.selectedWorld)
-  const simStarted = useStore((s) => s.simStarted)
-  const startingSim = useStore((s) => s.startingSim)
-  const stepping = useStore((s) => s.stepping)
-  const tick = useStore((s) => s.tick)
-  const events = useStore((s) => s.events)
-  const simError = useStore((s) => s.simError)
-  const startSim = useStore((s) => s.startSim)
-  const stepSim = useStore((s) => s.stepSim)
+
+  // lock body scroll while inside the world workspace
+  // (mirrors prototype `body[data-mode=world]{overflow:hidden}`)
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [])
 
   if (!world) return null
 
   return (
     <>
-      <TopBar />
-      <div className="sim-wrap">
-        <div className="sim-head">
-          <div className="sh-label">剧目舞台</div>
-          <h2>
-            {world.name} <em>{world.vision ? '' : ''}</em>
-          </h2>
-          {world.vision && (
-            <div style={{ fontSize: 14, color: 'var(--ink-2)', marginTop: 6 }}>
-              {world.vision}
+      <WorldTopBar />
+      <WorldNav dim={dim} onChange={setDim} />
+      <main className="world-main">
+        <section className="view active" data-view={dim}>
+          {dim === 'workbench' && <Workbench />}
+          {dim === 'worldview' && <Worldview />}
+          {dim === 'chronicle' && <Chronicle />}
+          {dim === 'cast' && <Cast />}
+          {dim === 'story' && <Story />}
+        </section>
+      </main>
+    </>
+  )
+}
+
+// ============ World top bar ============
+function WorldTopBar() {
+  const goHome = useStore((s) => s.goHome)
+  const world = useStore((s) => s.selectedWorld)
+  const tick = useStore((s) => s.tick)
+  const simStarted = useStore((s) => s.simStarted)
+  const startingSim = useStore((s) => s.startingSim)
+  const stepping = useStore((s) => s.stepping)
+  const startSim = useStore((s) => s.startSim)
+  const stepSim = useStore((s) => s.stepSim)
+
+  const clockText = [world?.clock_date, `Tick ${tick}`]
+    .filter(Boolean)
+    .join(' · ')
+
+  return (
+    <header className="topbar">
+      <button className="back-btn" onClick={goHome} title="返回世界库">
+        ←
+      </button>
+      <div className="world-name">
+        <span className="glyph">{glyphOf(world?.name ?? '?')}</span>
+        {world?.name ?? '世界'}
+      </div>
+      <div className="clock-info">{clockText || `Tick ${tick}`}</div>
+      {simStarted && (
+        <span className="meter live">
+          <span className="live-dot" />
+          运行中
+        </span>
+      )}
+      <span className="spacer" />
+      <div className="stage-controls">
+        <button
+          className="btn-ctrl primary"
+          onClick={simStarted ? stepSim : startSim}
+          disabled={simStarted ? stepping : startingSim}
+          title={simStarted ? '推进一拍 (Step)' : '启动模拟'}
+        >
+          ▶
+        </button>
+        <button className="btn-ctrl" title="导演介入（即将推出）" disabled>
+          🎬
+        </button>
+      </div>
+    </header>
+  )
+}
+
+// ============ World left nav ============
+function WorldNav({
+  dim,
+  onChange,
+}: {
+  dim: Dimension
+  onChange: (d: Dimension) => void
+}) {
+  const items: { key: Dimension; label: string }[] = [
+    { key: 'worldview', label: '🌍 世界背景' },
+    { key: 'workbench', label: '🎭 剧目舞台' },
+    { key: 'chronicle', label: '⏳ 时间事件' },
+    { key: 'cast', label: '👥 角色关系' },
+    { key: 'story', label: '📖 故事' },
+  ]
+  return (
+    <nav className="world-nav">
+      {items.map((it) => (
+        <a
+          key={it.key}
+          className={'wnav' + (dim === it.key ? ' active' : '')}
+          onClick={() => onChange(it.key)}
+        >
+          {it.label}
+        </a>
+      ))}
+    </nav>
+  )
+}
+
+function useCharacters() {
+  const fromSim = useStore((s) => s.characters)
+  const world = useStore((s) => s.selectedWorld)
+  if (fromSim.length > 0) return fromSim
+  return world?.characters ?? []
+}
+
+// ============ Workbench 剧目舞台 ============
+function Workbench() {
+  const world = useStore((s) => s.selectedWorld)
+  const characters = useCharacters()
+  const events = useStore((s) => s.events)
+  const simStarted = useStore((s) => s.simStarted)
+  const stepping = useStore((s) => s.stepping)
+  const simError = useStore((s) => s.simError)
+  const tick = useStore((s) => s.tick)
+
+  return (
+    <div className="wb">
+      <div className="wb-panel wb-char">
+        <div className="ph">登场 · {characters.length}</div>
+        {characters.length === 0 ? (
+          <div className="wb-empty">启动模拟后，角色将在此登场。</div>
+        ) : (
+          characters.map((c, i) => (
+            <div className="cb-chip present" key={c + i}>
+              <div className={'portrait p' + ((i % 3) + 1)}>{glyphOf(c)}</div>
+              <div>
+                {c}
+                <div className="cb-mini">角色</div>
+              </div>
             </div>
-          )}
-          <div className="sh-meta">
-            {[world.vision, world.setting].filter(Boolean).join(' · ') ||
-              '尚无设定'}
+          ))
+        )}
+      </div>
+      <div className="wb-panel wb-center">
+        <div className="ph">
+          {world?.vision || world?.name || '剧目舞台'}
+          <span className="ph-sub">
+            Tick {tick}
+            {world?.clock_date ? ' · ' + world.clock_date : ''}
+          </span>
+        </div>
+        {world?.setting && <p className="synopsis">{world.setting}</p>}
+        {simError && <div className="sim-error">⚠ {simError}</div>}
+        <Narrative events={events} simStarted={simStarted} stepping={stepping} />
+      </div>
+    </div>
+  )
+}
+
+// ============ Worldview 世界背景 ============
+type WvEntry = {
+  group: string
+  title: string
+  type: 'p' | 'l'
+  content: string | string[]
+}
+
+function buildWvEntries(world: World): WvEntry[] {
+  const entries: WvEntry[] = []
+  if (world.setting) {
+    entries.push({
+      group: '世界根基',
+      title: '世界设定',
+      type: 'p',
+      content: world.setting,
+    })
+  }
+  if (world.rules && world.rules.length > 0) {
+    entries.push({
+      group: '世界根基',
+      title: '世界规则',
+      type: 'l',
+      content: world.rules,
+    })
+  }
+  const vs = world.visual_style as Record<string, unknown> | undefined
+  if (vs) {
+    Object.entries(vs).forEach(([k, v]) => {
+      entries.push({
+        group: '视觉风格',
+        title: k,
+        type: 'p',
+        content: String(v),
+      })
+    })
+  }
+  return entries
+}
+
+function Worldview() {
+  const world = useStore((s) => s.selectedWorld)
+  const [sel, setSel] = useState(0)
+  if (!world) return null
+
+  const entries = buildWvEntries(world)
+  const vs = world.visual_style as Record<string, unknown> | undefined
+  const vsCount = vs ? Object.keys(vs).length : 0
+
+  const groups: string[] = []
+  entries.forEach((e) => {
+    if (!groups.includes(e.group)) groups.push(e.group)
+  })
+  const current = entries[sel]
+
+  return (
+    <div className="wv-book">
+      <div className="wv-head">
+        <div className="wv-title">
+          {world.name} <em>{world.vision}</em>
+        </div>
+        <div className="meters static">
+          <div className="meter live">
+            <span className="live-dot" />
+            {world.clock_date || 'Tick ' + (world.clock_tick ?? 0)}
+          </div>
+          <div className="meter">
+            <span className="m-k">Tick</span>
+            <span className="m-v">{world.clock_tick ?? 0}</span>
+          </div>
+          <div className="meter">
+            <span className="m-k">规则</span>
+            <span className="m-v">{world.rules?.length ?? 0}</span>
+          </div>
+          <div className="meter">
+            <span className="m-k">视觉项</span>
+            <span className="m-v">{vsCount}</span>
           </div>
         </div>
-
-        <div className="sim-controls">
-          {!simStarted ? (
-            <button
-              className="btn primary"
-              onClick={startSim}
-              disabled={startingSim}
-            >
-              {startingSim ? '启动中…' : '▶ 启动模拟'}
-            </button>
+      </div>
+      <div className="wv-body">
+        <div className="wv-toc">
+          {entries.length === 0 && (
+            <div className="wv-toc-item" style={{ cursor: 'default' }}>
+              尚无条目
+            </div>
+          )}
+          {groups.map((g) => (
+            <div key={g}>
+              <div className="wv-toc-group">{g}</div>
+              {entries
+                .map((e, i) => ({ e, i }))
+                .filter(({ e }) => e.group === g)
+                .map(({ e, i }) => (
+                  <div
+                    key={e.title + i}
+                    className={'wv-toc-item' + (sel === i ? ' active' : '')}
+                    onClick={() => setSel(i)}
+                  >
+                    {e.title}
+                  </div>
+                ))}
+            </div>
+          ))}
+        </div>
+        <div className="wv-content">
+          {!current ? (
+            <div className="placeholder">
+              <div className="glyph">✦</div>
+              这个世界还没有更详细的设定。
+            </div>
           ) : (
             <>
-              <span className="tick-pill">
-                Tick <b>{tick}</b>
-              </span>
-              <span className="live-pill">
-                <span className="live-dot" />
-                运行中
-              </span>
-              <span className="spacer" />
-              <button
-                className="btn primary"
-                onClick={stepSim}
-                disabled={stepping}
-              >
-                {stepping ? '推演中…' : '⏵ 推进一拍 (Step)'}
-              </button>
+              <h2>{current.title}</h2>
+              {current.type === 'p' ? (
+                <p>{current.content as string}</p>
+              ) : (
+                <ul>
+                  {(current.content as string[]).map((li, i) => (
+                    <li key={i}>{li}</li>
+                  ))}
+                </ul>
+              )}
             </>
           )}
         </div>
-
-        {simError && <div className="sim-error">⚠ {simError}</div>}
-
-        <Narrative events={events} simStarted={simStarted} stepping={stepping} />
       </div>
-    </>
+    </div>
+  )
+}
+
+// ============ Chronicle 时间事件 ============
+function Chronicle() {
+  const events = useStore((s) => s.events)
+  const tick = useStore((s) => s.tick)
+  const world = useStore((s) => s.selectedWorld)
+  const sorted = [...events].sort((a, b) => a.tick - b.tick)
+  const lastEventTick = sorted.length > 0 ? sorted[sorted.length - 1].tick : 0
+  const span = Math.max(tick, lastEventTick, 1)
+
+  return (
+    <div className="chr">
+      <div className="chr-head">
+        <div className="chr-title">时间事件</div>
+        <div className="chr-sub">{world?.name ?? ''} · 按时间排列</div>
+        <div className="chr-cur">
+          当前 · Tick {tick}
+          {world?.clock_date ? ' · ' + world.clock_date : ''}
+        </div>
+      </div>
+      <div className="chr-tl">
+        <div className="tl-bar">
+          <div className="tl-ruler">
+            <span className="tl-rname" />
+            <span>T0</span>
+            <span>T{Math.round(span / 4)}</span>
+            <span>T{Math.round(span / 2)}</span>
+            <span>T{Math.round((span * 3) / 4)}</span>
+            <span>T{span}</span>
+          </div>
+          <div className="tl-row">
+            <span className="tl-name">事件</span>
+            <div className="tl-lane">
+              {sorted.length === 0 ? (
+                <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+                  尚无事件
+                </span>
+              ) : (
+                sorted.map((e, i) => {
+                  const left = (e.tick / span) * 100
+                  return (
+                    <div
+                      key={i}
+                      className={
+                        'tl-evt' + (i === sorted.length - 1 ? ' now' : '')
+                      }
+                      style={{ left: `${left}%` }}
+                      title={`Tick ${e.tick} · ${e.type || ''}`}
+                    >
+                      ●{e.type || ''}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+          <div
+            className="tl-playhead"
+            style={{
+              left: `calc(60px + (100% - 64px) * ${Math.min(tick / span, 1)})`,
+            }}
+          />
+        </div>
+      </div>
+      <div className="chr-stream">
+        {sorted.length === 0 ? (
+          <div className="placeholder">
+            <div className="glyph">⏳</div>
+            还没有事件。启动模拟并推进时间，事件将在此按序呈现。
+          </div>
+        ) : (
+          sorted.map((e, i) => {
+            const isLast = i === sorted.length - 1
+            const preview = (e.narration || '（无叙述）').slice(0, 46)
+            const ellipsis =
+              e.narration && e.narration.length > 46 ? '…' : ''
+            return (
+              <div key={i} className={'chr-evt' + (isLast ? ' now' : '')}>
+                <span className="chr-t">Tick {e.tick}</span>
+                <span className="chr-type">{e.type || '事件'}</span>
+                <span className="chr-name">
+                  {preview}
+                  {ellipsis}
+                </span>
+              </div>
+            )
+          })
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ============ Cast 角色关系 ============
+function Cast() {
+  const characters = useCharacters()
+  const world = useStore((s) => s.selectedWorld)
+  return (
+    <div className="cast-grid">
+      <div className="cast-left">
+        <div className="ph">角色 · {characters.length}</div>
+        {characters.length === 0 ? (
+          <div className="placeholder">
+            <div className="glyph">👥</div>
+            启动模拟后，登场角色会出现在这里。
+          </div>
+        ) : (
+          <div className="char-cards">
+            {characters.map((c, i) => (
+              <div className="char-big" key={c + i}>
+                <div className={'cb-portrait p' + ((i % 3) + 1)}>
+                  {glyphOf(c)}
+                </div>
+                <div className="cb-body">
+                  <div className="n">{c}</div>
+                  <div className="r">角色</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="cast-right">
+        <div className="ph">
+          关系图谱 <span className="ph-sub">需要角色关系数据</span>
+        </div>
+        <div className="relation-map">
+          <h3>关系图谱</h3>
+          <div className="sub">
+            {characters.length > 0
+              ? `${characters.join(' · ')} 之间的关系将在数据齐备后绘制。`
+              : '尚无角色。启动模拟后，角色关系会在此呈现。'}
+          </div>
+        </div>
+        {world?.rules && world.rules.length > 0 && (
+          <div className="ws-grid" style={{ marginTop: 18 }}>
+            <div className="ws-card">
+              <h3>世界规则</h3>
+              <ul className="rule-list">
+                {world.rules.map((r, i) => (
+                  <li key={i}>{r}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ============ Story 故事 ============
+function Story() {
+  const events = useStore((s) => s.events)
+  const world = useStore((s) => s.selectedWorld)
+  const sorted = [...events].sort((a, b) => a.tick - b.tick)
+  const lastTick = sorted.length > 0 ? sorted[sorted.length - 1].tick : 0
+  const wordCount = sorted.reduce((n, e) => n + (e.narration?.length ?? 0), 0)
+
+  return (
+    <div className="story-wrap">
+      <div className="story-head">
+        <div className="sh-label">
+          {world?.name ?? ''} · {world?.vision || '叙述长卷'}
+        </div>
+        <h2>{world?.vision || world?.name || '故事'}</h2>
+        <div className="sh-meta">
+          {sorted.length} 段叙述 · 截至 Tick {lastTick} · 约 {wordCount} 字
+        </div>
+      </div>
+      {sorted.length === 0 ? (
+        <div className="placeholder">
+          <div className="glyph">📖</div>
+          故事尚未开始。启动模拟并推进时间，叙述将自行生长。
+        </div>
+      ) : (
+        <article className="chapter">
+          <div className="chap-no">第 一 章</div>
+          <h3 className="chap-title">
+            {world?.vision || world?.name || '开篇'}
+          </h3>
+          {sorted.map((e, i) => (
+            <p key={i}>{e.narration || '（无叙述）'}</p>
+          ))}
+          <p className="wip">▍ 故事仍在自行生长……</p>
+        </article>
+      )}
+    </div>
   )
 }
 
