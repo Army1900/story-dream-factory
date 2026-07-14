@@ -1,19 +1,12 @@
 from __future__ import annotations
 
 import uuid
+from pathlib import Path
 
-from fastapi import APIRouter, Depends
-from sqlmodel import Session
+from fastapi import APIRouter
 
-from app.api.deps import get_session
-from app.models.character import Character
-from app.models.location import Location
-from app.models.world import World
-from app.persistence.repository import (
-    CharacterRepository,
-    LocationRepository,
-    WorldRepository,
-)
+from app.config import get_settings
+from app.persistence.world_store import WorldStore
 from app.worldbuilder.conversation import ConversationService
 from app.worldbuilder.health_check import run_health_check
 from app.worldbuilder.session import BuilderSession
@@ -105,7 +98,7 @@ def go_back(sid: str):
 
 
 @router.post("/session/{sid}/finalize")
-def finalize_session(sid: str, session_db: Session = Depends(get_session)):
+def finalize_session(sid: str):
     session = _SESSIONS.get(sid)
     if not session:
         return {"error": "session not found"}
@@ -113,43 +106,64 @@ def finalize_session(sid: str, session_db: Session = Depends(get_session)):
     # 健康检查
     health = run_health_check(session.collected)
 
-    # 组装 World 对象
+    # 组装 world_dict（world.yaml schema）
     collected = session.collected
-    world = World(
-        name=session.world_name or "新世界",
-        vision=str(collected.get("vision", {}).get("type", "")),
-        setting=str(collected.get("setting", "")),
-        rules=collected.get("rules", []),
-        visual_style=collected.get("visual_style", {}),
-        initial_state=collected.get("inciting", {}),
-    )
-    repo = WorldRepository(session_db)
-    repo.create(world)
+    name = session.world_name or "新世界"
 
-    # 角色
-    char_repo = CharacterRepository(session_db)
+    characters: list[dict] = []
     for ch in collected.get("characters", []):
-        if isinstance(ch, dict):
-            char_repo.create(
-                Character(
-                    world_id=world.id,
-                    name=ch.get("name", ""),
-                    archetype=ch.get("archetype", ""),
-                    goals=ch.get("goals", {}),
-                    personality=ch.get("personality", {}),
-                )
-            )
+        if not isinstance(ch, dict):
+            continue
+        cname = ch.get("name", "")
+        characters.append(
+            {
+                "id": ch.get("id", cname),
+                "name": cname,
+                "archetype": ch.get("archetype", ""),
+                "personality": ch.get("personality", {}) or {},
+                "backstory": ch.get("backstory", ""),
+                "goals": ch.get("goals", {}) or {},
+                "state": ch.get("state", {}) or {},
+            }
+        )
 
-    # 地点
-    loc_repo = LocationRepository(session_db)
+    locations: list[dict] = []
     for loc in collected.get("locations", []):
-        if isinstance(loc, (str, dict)):
-            name = loc if isinstance(loc, str) else loc.get("name", "")
-            if name:
-                loc_repo.create(Location(world_id=world.id, name=name))
+        loc_name = loc if isinstance(loc, str) else loc.get("name", "")
+        if loc_name:
+            entry = {"id": loc_name, "name": loc_name}
+            if isinstance(loc, dict):
+                entry.update(
+                    {
+                        "description": loc.get("description", ""),
+                        "neighbors": loc.get("neighbors", []) or [],
+                        "occupants": loc.get("occupants", []) or [],
+                        "resources": loc.get("resources", []) or [],
+                    }
+                )
+            locations.append(entry)
+
+    world_dict = {
+        "id": name,
+        "name": name,
+        "vision": str(collected.get("vision", {}).get("type", "")),
+        "setting": str(collected.get("setting", "")),
+        "rules": collected.get("rules", []) or [],
+        "visual_style": collected.get("visual_style", {}) or {},
+        "clock_tick": 0,
+        "clock_date": "",
+        "state_flags": {},
+        "initial_state": collected.get("inciting", {}) or {},
+        "characters": characters,
+        "locations": locations,
+        "relationships": [],
+    }
+
+    world_dir = Path(get_settings().worlds_dir) / name
+    WorldStore().save_world(world_dir, world_dict)
 
     return {
-        "world_id": world.id,
+        "world_id": name,
         "health": {
             "passed": health.passed,
             "errors": health.errors,
