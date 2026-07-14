@@ -68,3 +68,11 @@ uv run pytest
 - 多角色并行决策（asyncio.gather）
 - Simulator：并行决策→物理裁决→关系更新→批量叙述
 - 同地点角色互相影响（冲突降好感、合作升好感）
+
+## M6 记忆涌现已实现
+
+- 记忆检索（recency+importance+relevance 三权重公式）
+- 记忆写入（从事件提取，按 visibility 过滤）
+- 反思（周期性 LLM 生成高层洞察，每 N tick）
+- CharacterAgent 决策时检索相关记忆
+- Simulator tick 后自动写入记忆
