@@ -67,3 +67,61 @@ async def test_world_snapshot_built():
     snapshot = sim._build_snapshot()
     assert snapshot["location"]  # 有地点
     assert "艾伦" in snapshot["present"]
+
+
+# ---------------------------------------------------------------- M4 多角色测试
+
+def _mock_llm_multi():
+    llm = MagicMock()
+    llm.complete = AsyncMock(return_value="多个角色在这一刻行动。")
+    llm.complete_json = AsyncMock(return_value={"intent": "行动", "action_type": "action", "target": "", "expectation": "", "dialogue": ""})
+    return llm
+
+def _make_world_multi():
+    return World(id="w-m", name="艾尔德兰", setting="魔法衰落", clock_tick=0, rules=["魔法不可复活死者"])
+
+def _make_chars():
+    return [
+        Character(id="c1", world_id="w-m", name="艾伦", goals={"short_term": "复仇"}, state={"location_id": "酒馆", "health": 100}),
+        Character(id="c2", world_id="w-m", name="贝拉", goals={"short_term": "守护秘密"}, state={"location_id": "酒馆", "health": 100}),
+        Character(id="c3", world_id="w-m", name="凯尔", goals={"short_term": "操纵"}, state={"location_id": "谋士塔", "health": 100}),
+    ]
+
+@pytest.mark.asyncio
+async def test_multi_character_tick():
+    llm = _mock_llm_multi()
+    sim = Simulator(_make_world_multi(), _make_chars(), llm)
+    events = await sim.tick()
+    assert len(events) == 3  # 三个角色各一个事件
+
+@pytest.mark.asyncio
+async def test_multi_tick_advances_clock_once():
+    llm = _mock_llm_multi()
+    world = _make_world_multi()
+    sim = Simulator(world, _make_chars(), llm)
+    await sim.tick()
+    assert world.clock_tick == 1  # 多角色但只推进一次
+
+@pytest.mark.asyncio
+async def test_physics_applied():
+    llm = MagicMock()
+    llm.complete = AsyncMock(return_value="叙述")
+    llm.complete_json = AsyncMock(return_value={"intent": "去王城", "action_type": "move", "target": "王城", "expectation": "", "dialogue": ""})
+    world = _make_world_multi()
+    sim = Simulator(world, [_make_chars()[0]], llm)  # 只有艾伦
+    await sim.tick()
+    # 艾伦应该移动到王城
+    assert sim.characters[0].state["location_id"] == "王城"
+
+@pytest.mark.asyncio
+async def test_conflict_updates_health():
+    llm = MagicMock()
+    llm.complete = AsyncMock(return_value="战斗")
+    llm.complete_json = AsyncMock(return_value={"intent": "攻击", "action_type": "conflict", "target": "贝拉", "expectation": "", "dialogue": ""})
+    world = _make_world_multi()
+    chars = _make_chars()[:2]  # 艾伦 + 贝拉
+    sim = Simulator(world, chars, llm)
+    await sim.tick()
+    # 艾伦攻击→贝拉应受伤（health 下降）
+    bella = [c for c in sim.characters if c.name == "贝拉"][0]
+    assert bella.state["health"] < 100
