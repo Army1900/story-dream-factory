@@ -161,8 +161,21 @@ const BUILDER_STAGES: { key: string; name: string; desc: string }[] = [
 
 const BUILDER_TEMPLATES = [
   { idx: 0, name: '中世纪奇幻', en: 'Fantasy', desc: '魔法衰落中的王国', glyph: '奇', grad: 'linear-gradient(135deg,#3a4a6b,#1a2238)' },
-  { idx: 1, name: '赛博朋克', en: 'Cyberpunk', desc: '2087 企业垄断的未来', glyph: '霓', grad: 'linear-gradient(135deg,#6b3a5a,#381a2a)' },
+  { idx: 1, name: '权谋宫廷', en: 'Court', desc: '王座空悬，群狼环伺', glyph: '权', grad: 'linear-gradient(135deg,#5a2a2a,#2a1010)' },
   { idx: 2, name: '东方仙侠', en: 'Xianxia', desc: '仙门林立的修仙界', glyph: '霄', grad: 'linear-gradient(135deg,#3a5a3a,#1a2818)' },
+  { idx: 3, name: '克苏鲁恐怖', en: 'Lovecraft', desc: '海雾笼罩的孤镇', glyph: '雾', grad: 'linear-gradient(135deg,#1a4a4a,#082828)' },
+  { idx: 4, name: '末日废土', en: 'Wasteland', desc: '核冬后的荒原', glyph: '废', grad: 'linear-gradient(135deg,#5a4a2a,#2a2010)' },
+  { idx: 5, name: '赛博朋克', en: 'Cyberpunk', desc: '2087 企业垄断的未来', glyph: '霓', grad: 'linear-gradient(135deg,#6b3a5a,#381a2a)' },
+  { idx: 6, name: '太空歌剧', en: 'Space', desc: '星际帝国的黄昏', glyph: '星', grad: 'linear-gradient(135deg,#1a2a5a,#0a1028)' },
+  { idx: 7, name: 'AI觉醒', en: 'AI', desc: '人工智能觉醒的那一天', glyph: '智', grad: 'linear-gradient(135deg,#2a4a5a,#101a28)' },
+  { idx: 8, name: '时间旅行', en: 'Time', desc: '时间线断裂的危机', glyph: '时', grad: 'linear-gradient(135deg,#3a2a5a,#1a1038)' },
+  { idx: 9, name: '盛唐暗影', en: 'Tang', desc: '天宝末年的长安城', glyph: '唐', grad: 'linear-gradient(135deg,#5a3a1a,#2a1a08)' },
+  { idx: 10, name: '民国谍战', en: 'Spy', desc: '1940年代谍影重重', glyph: '谍', grad: 'linear-gradient(135deg,#2a3a2a,#101a10)' },
+  { idx: 11, name: '推理悬案', en: 'Mystery', desc: '密室杀人案', glyph: '谜', grad: 'linear-gradient(135deg,#3a2a1a,#1a1408)' },
+  { idx: 12, name: '都市情感', en: 'Urban', desc: '霓虹灯下的相遇', glyph: '都', grad: 'linear-gradient(135deg,#5a3a4a,#2a1a2a)' },
+  { idx: 13, name: '校园青春', en: 'Campus', desc: '大学最后一年', glyph: '园', grad: 'linear-gradient(135deg,#3a4a2a,#1a2010)' },
+  { idx: 14, name: '武侠江湖', en: 'Wuxia', desc: '刀光剑影的江湖', glyph: '侠', grad: 'linear-gradient(135deg,#2a4a3a,#102018)' },
+  { idx: 15, name: '盗墓探险', en: 'Tomb', desc: '古墓中的生死', glyph: '墓', grad: 'linear-gradient(135deg,#4a3a1a,#2a2008)' },
 ]
 
 const BUILDER_HEADINGS: { h: ReactNode; d: string }[] = [

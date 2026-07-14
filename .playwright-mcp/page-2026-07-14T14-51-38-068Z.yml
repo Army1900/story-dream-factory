@@ -1,0 +1,34 @@
+- generic [ref=f2e3]:
+  - banner [ref=f2e4]:
+    - generic [ref=f2e5] [cursor=pointer]:
+      - generic [ref=f2e7]: 故事梦工厂
+      - generic [ref=f2e8]: Story Dream Factory
+    - generic [ref=f2e9]: 后端 在线
+  - generic [ref=f2e11]:
+    - generic [ref=f2e12]: Story Dream Factory
+    - heading [level=1] [ref=f2e13]:
+      - text: 让故事
+      - emphasis [ref=f2e14]: 自行生长
+    - paragraph [ref=f2e15]: 构建一个世界，启动模拟，看角色、冲突与命运在叙述中自行涌现。
+    - button "＋ 新建世界" [ref=f2e17] [cursor=pointer]
+  - generic [ref=f2e18]:
+    - generic [ref=f2e19]:
+      - text: 你的世界
+      - generic [ref=f2e20]: · 2
+    - generic [ref=f2e21]:
+      - generic [ref=f2e22] [cursor=pointer]:
+        - generic [ref=f2e23]: x
+        - generic [ref=f2e25]:
+          - heading "x" [level=3] [ref=f2e26]
+          - generic [ref=f2e27]: 尚未设定愿景的世界。
+          - generic [ref=f2e28]:
+            - generic [ref=f2e29]: 0 条规则
+            - generic [ref=f2e30]: Tick 0
+      - generic [ref=f2e31] [cursor=pointer]:
+        - generic [ref=f2e32]: 艾
+        - generic [ref=f2e34]:
+          - heading "艾尔德兰" [level=3] [ref=f2e35]
+          - generic [ref=f2e36]: 魔法衰落的王国
+          - generic [ref=f2e37]:
+            - generic [ref=f2e38]: 4 条规则
+            - generic [ref=f2e39]: Tick 0

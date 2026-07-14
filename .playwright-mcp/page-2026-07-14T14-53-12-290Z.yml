@@ -1,0 +1,19 @@
+- generic [ref=f3e3]:
+  - banner [ref=f3e76]:
+    - button "←" [ref=f3e77] [cursor=pointer]
+    - generic [ref=f3e78] [cursor=pointer]: 艾尔德兰
+  - generic [ref=f3e81]:
+    - generic [ref=f3e82]:
+      - generic [ref=f3e83]: 剧目舞台
+      - heading "艾尔德兰" [level=2] [ref=f3e84]:
+        - text: 艾尔德兰
+        - emphasis
+      - generic [ref=f3e85]: 魔法衰落的王国
+      - generic [ref=f3e86]: 魔法衰落的王国 · 三年前寂灭之乱后魔法急剧衰退，旧贵族死守权力，流亡者在边境集结。冬月风雪，流亡骑士归来。
+    - generic [ref=f3e87]:
+      - generic [ref=f3e91]: Tick 0
+      - generic [ref=f3e92]: 运行中
+      - button "推演中…" [disabled] [ref=f3e95]
+    - generic [ref=f3e96]:
+      - generic [ref=f3e97]: 推演中…
+      - paragraph [ref=f3e100]: 世界正在演化这一拍。

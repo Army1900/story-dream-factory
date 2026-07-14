@@ -1,0 +1,30 @@
+- generic [ref=e3]:
+  - banner [ref=e43]:
+    - button "←" [ref=e44] [cursor=pointer]
+    - generic [ref=e45]:
+      - generic [ref=e46]: 艾
+      - text: 艾尔德兰
+    - generic [ref=e47]: Tick 5
+    - generic [ref=e153]: 运行中
+    - generic [ref=e48]:
+      - button "▶" [ref=e49] [cursor=pointer]
+      - button "🎬" [disabled] [ref=e50]
+  - navigation [ref=e51]:
+    - generic [ref=e52] [cursor=pointer]: 🌍 世界背景
+    - generic [ref=e53] [cursor=pointer]: 🎭 剧目舞台
+    - generic [ref=e54] [cursor=pointer]: ⏳ 时间事件
+    - generic [ref=e55] [cursor=pointer]: 👥 角色关系
+    - generic [ref=e56] [cursor=pointer]: 📖 故事
+  - main [ref=e57]:
+    - generic [ref=e229]:
+      - generic [ref=e230]:
+        - generic [ref=e231]: 艾尔德兰 · 魔法衰落的王国
+        - heading "魔法衰落的王国" [level=2] [ref=e232]
+        - generic [ref=e233]: 3 段叙述 · 截至 Tick 4 · 约 543 字
+      - article [ref=e234]:
+        - generic [ref=e235]: 第 一 章
+        - heading "魔法衰落的王国" [level=3] [ref=e236]
+        - paragraph [ref=e237]: 断刃酒馆内，火光摇曳，艾伦紧握双拳，愤怒的打断贝拉的话，他的目光犹如夜空中最亮的星辰，炽热而坚定：“贝拉，你的言辞如同薄冰，看似透明却隐藏着深深的寒意。我不信忠诚与自由竟可如此被亵渎。快说，你们究竟在隐瞒何事？是揭开这层迷雾，还是让真相永远沉睡？”
+        - paragraph [ref=e238]: 断刃酒馆内，烛火摇曳，艾伦的身影在阴影中显得格外孤独。老酒馆老板缓缓举起酒杯，目光深邃，语调低沉而坚定：「忠诚，是信仰之锚，自由，是灵魂之翼。我追求的自由，并非背叛誓言，而是寻求那被束缚的忠诚得以绽放光芒的土壤。艾伦，或许真相只是海市蜃楼，但守护这秘密，是我们的宿命。当夜幕低垂，谁又能分辨，是星辰指引，还是黑暗潜伏？」艾伦沉默片刻，眼神中闪过一丝决然，回应道：「即便星辰沉没，我亦愿与您并肩，守护这片土地的宁静。」
+        - paragraph [ref=e239]: 「酒馆内烛火摇曳，艾伦的嗓音低沉如夜潮涌动，与贝拉的语调清亮如晨露轻拂。贝拉的眼眸深处藏着星辰般深邃的忠诚，而艾伦则似在波涛中探寻自由的灯塔。」 「“贝拉，你心中那座忠诚的城池，是如何在波谲云诡的世界中坚守的？”艾伦以探究的口吻问道，贝拉的答案却如微风拂过湖面，留下涟漪层层。」 「“秘密如同锁在心房的宝石，守护它们是信仰，是自由之路上不可或缺的指引。”贝拉轻语，眼神坚定，艾伦听后，心中似乎有一片云层被秘密的微光照亮。」
+        - paragraph [ref=e240]: ▍ 故事仍在自行生长……

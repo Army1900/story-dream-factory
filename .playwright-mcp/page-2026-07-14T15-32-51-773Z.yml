@@ -1,0 +1,35 @@
+- generic [ref=e3]:
+  - banner [ref=e43]:
+    - button "←" [ref=e44] [cursor=pointer]
+    - generic [ref=e45]:
+      - generic [ref=e46]: 艾
+      - text: 艾尔德兰
+    - generic [ref=e47]: Tick 0
+    - generic [ref=e48]:
+      - button "▶" [ref=e49] [cursor=pointer]
+      - button "🎬" [disabled] [ref=e50]
+  - navigation [ref=e51]:
+    - generic [ref=e52] [cursor=pointer]: 🌍 世界背景
+    - generic [ref=e53] [cursor=pointer]: 🎭 剧目舞台
+    - generic [ref=e54] [cursor=pointer]: ⏳ 时间事件
+    - generic [ref=e55] [cursor=pointer]: 👥 角色关系
+    - generic [ref=e56] [cursor=pointer]: 📖 故事
+  - main [ref=e57]:
+    - generic [ref=e118]:
+      - generic [ref=e119]:
+        - generic [ref=e120]: 角色 · 0
+        - generic [ref=e121]:
+          - generic [ref=e122]: 👥
+          - text: 启动模拟后，登场角色会出现在这里。
+      - generic [ref=e123]:
+        - generic [ref=e124]: 关系图谱 需要角色关系数据
+        - generic [ref=e125]:
+          - heading "关系图谱" [level=3] [ref=e126]
+          - generic [ref=e127]: 尚无角色。启动模拟后，角色关系会在此呈现。
+        - generic [ref=e129]:
+          - heading "世界规则" [level=3] [ref=e130]
+          - list [ref=e131]:
+            - listitem [ref=e132]: — 魔法稀有，施法付代价
+            - listitem [ref=e133]: — 暴力会被通缉
+            - listitem [ref=e134]: — 誓言有约束力
+            - listitem [ref=e135]: — 冬夜不收外乡人
