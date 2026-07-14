@@ -14,7 +14,8 @@ from app.models.enums import EventType
 class Simulator:
     """模拟引擎（M4 多角色版）：并行决策→物理裁决→叙述。"""
 
-    def __init__(self, world: World, characters: list[Character], llm_gateway):
+    def __init__(self, world: World, characters: list[Character], llm_gateway,
+                 world_dir: str | None = None):
         self.world = world
         self.characters = characters
         self.llm = llm_gateway
@@ -24,6 +25,8 @@ class Simulator:
         self.event_history: list[Event] = []
         self.character_memories: dict[str, list] = {}
         self.directives: list[dict] = []
+        # 文件系统持久化目录；None 时行为完全不变（向后兼容）
+        self.world_dir = world_dir
 
     def _build_snapshot(self) -> dict:
         locs = {}
@@ -111,8 +114,89 @@ class Simulator:
             for m in new_mems:
                 self.character_memories.setdefault(m.character_id, []).append(m)
 
+        # ⑥ 修复记忆回路：把累积记忆同步回对应 agent，让下一 tick 能检索到
+        # （此前 agent.memories 恒空是 bug）
+        for agent in self.agents:
+            char_name = agent.character.name
+            new_mems = self.character_memories.get(char_name, [])
+            agent.memories = new_mems
+
         self.world.clock_tick += 1
+
+        # ⑦ 文件持久化（仅当 world_dir 已接线）
+        if self.world_dir:
+            self._persist(current_tick, events)
+
         return events
+
+    # ----------------------------------------------------------- 持久化辅助
+    def _persist(self, current_tick: int, events: list[Event]) -> None:
+        """tick 末尾把 events / memories / world 写入文件系统（YAML）。"""
+        from app.persistence.world_store import WorldStore
+        store = WorldStore()
+        wd = self.world_dir
+
+        # events → events/tick-{N:03d}.yaml
+        store.save_events(wd, current_tick, [self._event_to_dict(e) for e in events])
+
+        # memories → memories/{name}.yaml（仅有记忆的角色写文件，避免空文件）
+        for char_name, mems in self.character_memories.items():
+            store.save_memories(wd, char_name, [self._memory_to_dict(m) for m in mems])
+
+        # world → world.yaml（World 字段 + Characters state + clock_tick 推进）
+        store.save_world(wd, self._export_world_state())
+
+    def _event_to_dict(self, e) -> dict:
+        """Event 对象 → dict。"""
+        return {
+            "type": e.type.value if hasattr(e.type, "value") else str(e.type),
+            "participants": e.participants or [],
+            "location_id": e.location_id,
+            "narration": e.narration,
+            "tick": e.tick,
+            "payload": e.payload or {},
+        }
+
+    def _memory_to_dict(self, m) -> dict:
+        """Memory 对象 → dict。"""
+        mtype = getattr(m, "type", "")
+        return {
+            "type": mtype if isinstance(mtype, str) else mtype.value,
+            "content": getattr(m, "content", ""),
+            "tick": getattr(m, "tick", 0),
+            "importance": getattr(m, "importance", 5.0),
+        }
+
+    def _export_world_state(self) -> dict:
+        """导出当前世界状态（含 characters / locations / relationships）。"""
+        return {
+            "id": self.world.id,
+            "name": self.world.name,
+            "vision": self.world.vision,
+            "setting": self.world.setting,
+            "rules": self.world.rules or [],
+            "visual_style": self.world.visual_style or {},
+            "clock_tick": self.world.clock_tick,
+            "clock_date": self.world.clock_date,
+            "state_flags": self.world.state_flags or {},
+            "initial_state": self.world.initial_state or {},
+            "characters": [
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "archetype": c.archetype,
+                    "personality": c.personality or {},
+                    "backstory": c.backstory,
+                    "goals": c.goals or {},
+                    "state": c.state or {},
+                }
+                for c in self.characters
+            ],
+            # Locations / Relationships 当前未作为独立集合存在 Simulator 中，
+            # 留空列表以匹配 world.yaml schema（后续 Task 接线时填充）。
+            "locations": [],
+            "relationships": [],
+        }
 
     def _update_relationships(self, actions: list[ResolvedAction]) -> None:
         """根据行动类型更新角色间关系（简化版：同地点的角色互相影响）。"""
