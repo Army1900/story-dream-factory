@@ -77,13 +77,21 @@ function HomeView() {
         <p className="home-sub">
           构建一个世界，启动模拟，看角色、冲突与命运在叙述中自行涌现。
         </p>
-        <div style={{ marginTop: 26 }}>
+        <div style={{ marginTop: 26, display: 'flex', gap: 10 }}>
           <button
             className="btn primary"
             onClick={() => setShowCreate((v) => !v)}
           >
             {showCreate ? '收起新建' : '＋ 新建世界'}
           </button>
+          {showCreate && (
+            <button
+              className="btn"
+              onClick={() => setShowCreate(false)}
+            >
+              ✕ 关闭
+            </button>
+          )}
         </div>
       </div>
 
@@ -211,6 +219,19 @@ function BuilderFlow({ onDone, onCancel }: { onDone: () => void; onCancel: () =>
   const [health, setHealth] = useState<{ passed: boolean; errors: string[]; warnings: string[] } | null>(null)
 
   const chatRef = useRef<HTMLDivElement>(null)
+
+  function resetBuilder() {
+    setPhase('select')
+    setSessionId(null)
+    setStage('vision')
+    setMessages([])
+    setChecklist({})
+    setCollected({})
+    setInput('')
+    setError(null)
+    setHealth(null)
+  }
+
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, sending])
@@ -375,6 +396,10 @@ function BuilderFlow({ onDone, onCancel }: { onDone: () => void; onCancel: () =>
             <span className="name">新建世界</span>
           </div>
           <span className="spacer" />
+          <button className="btn" onClick={onCancel} title="关闭">
+            ✕ 关闭
+          </button>
+          <span className="spacer" />
           <span className="builder-progress">
             选择模板 · <b>第 0 / 7 步</b>
           </span>
@@ -434,6 +459,18 @@ function BuilderFlow({ onDone, onCancel }: { onDone: () => void; onCancel: () =>
           新世界 · <b>第 {currentStageIdx + 1} / 7 步 · {stageInfo?.name}</b>
         </span>
         <span className="spacer" />
+        <button
+          className="btn"
+          onClick={() => {
+            if (confirm('确定要放弃当前世界构建？已填写的对话将丢失。')) {
+              resetBuilder()
+              onCancel()
+            }
+          }}
+          title="放弃构建，返回主页"
+        >
+          ✕ 取消
+        </button>
       </header>
       <div className="builder-wrap">
         <aside className="builder-stages">
