@@ -21,6 +21,7 @@ class Simulator:
         self.physics = PhysicsEngine()
         self.agents = [CharacterAgent(c, llm_gateway) for c in characters]
         self.event_history: list[Event] = []
+        self.character_memories: dict[str, list] = {}
 
     def _build_snapshot(self) -> dict:
         locs = {}
@@ -38,7 +39,7 @@ class Simulator:
         snapshot = self._build_snapshot()
 
         # ① 角色并行决策
-        proposals = await asyncio.gather(*[a.decide(snapshot) for a in self.agents])
+        proposals = await asyncio.gather(*[a.decide(snapshot, current_tick=current_tick) for a in self.agents])
 
         # ② 物理引擎裁决
         resolved_actions: list[ResolvedAction] = []
@@ -67,6 +68,17 @@ class Simulator:
             )
             events.append(event)
             self.event_history.append(event)
+
+        # ⑤ 记忆写入（从事件提取）
+        from app.memory.writer import MemoryWriter
+        writer = MemoryWriter()
+        char_names = [c.name for c in self.characters]
+        if not hasattr(self, 'character_memories'):
+            self.character_memories = {}
+        for event in events:
+            new_mems = writer.extract_memories(event, char_names)
+            for m in new_mems:
+                self.character_memories.setdefault(m.character_id, []).append(m)
 
         self.world.clock_tick += 1
         return events

@@ -2,6 +2,7 @@ from __future__ import annotations
 import json
 from app.agents.proposal import ActionProposal
 from app.models.character import Character
+from app.memory.retrieval import MemoryRetriever
 
 
 class CharacterAgent:
@@ -11,6 +12,7 @@ class CharacterAgent:
         self.character = character
         self.llm = llm_gateway
         self.memories = memories or []
+        self.retriever = MemoryRetriever()
 
     def perceive(self, world_snapshot: dict) -> str:
         """从世界快照提取角色能感知的，返回文本。"""
@@ -30,12 +32,14 @@ class CharacterAgent:
             parts.append(f"你的心情：{state['mood']}。")
         return " ".join(parts)
 
-    def _build_decision_prompt(self, perception: str) -> list[dict]:
+    def _build_decision_prompt(self, perception: str, current_tick: int = 0) -> list[dict]:
         c = self.character
         personality = c.personality or {}
         goals = c.goals or {}
         backstory = c.backstory or ""
-        mem_text = "\n".join(f"- {m.get('content','')}" for m in self.memories[-5:]) if self.memories else "（无记忆）"
+        # 检索相关记忆（top 5）
+        retrieved = self.retriever.retrieve(self.memories, query_vec=[], current_tick=current_tick, top_k=5)
+        mem_text = "\n".join(f"- {self._mem_content(m)}" for m in retrieved) if retrieved else "（无记忆）"
 
         system = (
             f"你是角色「{c.name}」的大脑。根据你的性格、目标和记忆，决定此刻做什么。\n"
@@ -51,10 +55,17 @@ class CharacterAgent:
             {"role": "user", "content": perception},
         ]
 
-    async def decide(self, world_snapshot: dict) -> ActionProposal:
+    @staticmethod
+    def _mem_content(m) -> str:
+        """从记忆项读取内容，兼容 Memory 对象与 dict。"""
+        if isinstance(m, dict):
+            return m.get("content", "")
+        return getattr(m, "content", "") or ""
+
+    async def decide(self, world_snapshot: dict, current_tick: int = 0) -> ActionProposal:
         """感知→规划→产出 ActionProposal。"""
         perception = self.perceive(world_snapshot)
-        messages = self._build_decision_prompt(perception)
+        messages = self._build_decision_prompt(perception, current_tick=current_tick)
         try:
             data = await self.llm.complete_json(messages=messages)
             return ActionProposal.from_dict(data)

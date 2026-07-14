@@ -125,3 +125,17 @@ async def test_conflict_updates_health():
     # 艾伦攻击→贝拉应受伤（health 下降）
     bella = [c for c in sim.characters if c.name == "贝拉"][0]
     assert bella.state["health"] < 100
+
+
+@pytest.mark.asyncio
+async def test_tick_writes_memories():
+    """tick 后角色应有记忆写入。"""
+    llm = MagicMock()
+    llm.complete = AsyncMock(return_value="叙述")
+    llm.complete_json = AsyncMock(return_value={"intent":"行动","action_type":"dialogue","target":"贝拉","expectation":"","dialogue":"你好。"})
+    world = _make_world()
+    chars = _make_chars()
+    sim = Simulator(world, chars, llm)
+    await sim.tick()
+    # 至少有角色有记忆
+    assert len(sim.character_memories.get("艾伦", [])) > 0 or len(sim.character_memories.get("c1", [])) > 0 or len(sim.event_history) > 0

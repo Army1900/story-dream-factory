@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 from app.agents.character_agent import CharacterAgent
 from app.agents.proposal import ActionProposal
 from app.models.character import Character
+from app.models.memory import Memory
 
 def _mock_llm(json_reply=None):
     llm = MagicMock()
@@ -62,3 +63,19 @@ async def test_decide_handles_llm_error():
     proposal = await agent.decide(snapshot)
     # 降级：返回 wait 提案
     assert proposal.action_type == "wait"
+
+
+@pytest.mark.asyncio
+async def test_decide_uses_retrieved_memories():
+    llm = _mock_llm(json_reply={"intent":"质问","action_type":"dialogue","target":"贝拉","expectation":"","dialogue":"你骗了我。"})
+    memories = [
+        Memory(character_id="c1", world_id="w1", content="贝拉三年前为我锻剑", importance=9, tick=1),
+        Memory(character_id="c1", world_id="w1", content="今天下了雪", importance=2, tick=10),
+    ]
+    agent = CharacterAgent(_make_character(), llm, memories=memories)
+    snapshot = {"location":"酒馆","present":["贝拉"],"recent_events":[]}
+    await agent.decide(snapshot)
+    # 验证 prompt 包含高重要性记忆
+    call = llm.complete_json.call_args
+    messages = call.kwargs.get("messages") or call.args[0]
+    assert "锻剑" in str(messages)  # 高重要性记忆被检索
