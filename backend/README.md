@@ -59,3 +59,12 @@ uv run pytest
 - Narrator 叙述者（提案→文学叙述 Event，错误降级模板）
 - Simulator 模拟引擎（单角色 tick：决策→叙述→推进时钟→事件历史）
 - API：`POST /worlds/{id}/simulate/start`、`POST /step`、`GET /status`
+
+## M4 多角色模拟已实现
+
+- 物理引擎（确定性裁决：移动/资源/战斗/关系，不调 LLM）
+- 数值规则（伤害表 + 关系变化表）
+- 规则约束检测（世界规则阻挡违规行动）
+- 多角色并行决策（asyncio.gather）
+- Simulator：并行决策→物理裁决→关系更新→批量叙述
+- 同地点角色互相影响（冲突降好感、合作升好感）
