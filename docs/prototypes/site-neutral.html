@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>故事梦工厂 — Story Dream Factory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#e9ecf5; --ink-2:#a8b0c4; --ink-3:#6e768e; --ink-4:#3c445c;
+  --glass:rgba(255,255,255,.045); --glass-2:rgba(255,255,255,.075); --glass-3:rgba(255,255,255,.11);
+  --line:rgba(255,255,255,.09); --line-strong:rgba(255,255,255,.2);
+  --accent:#c8ccd6; --accent-2:#9ea2b0;
+  --ok:#7ecb8e; --warn:#dcb15a; --bad:#e8746a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{font-family:'Hanken Grotesk',system-ui,sans-serif;color:var(--ink);font-size:14.5px;line-height:1.55;-webkit-font-smoothing:antialiased;font-weight:400;background:#0a0b12;position:relative}
+body[data-mode=home]{background:transparent}
+body[data-mode=home] .cosmos{display:block}
+
+/* ===== 星海整体背景 ===== */
+.cosmos{position:fixed;inset:0;z-index:0;overflow:hidden;display:none;background:radial-gradient(ellipse 95% 78% at 50% 45%, #1b1b1f 0%, #0e0e12 50%, #050507 100%)}
+.cosmos-glow{position:absolute;inset:0;background:radial-gradient(circle at 50% 45%, rgba(255,255,255,.14), transparent 48%);animation:breathe 9s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.07)}}
+.cosmos-grid{position:absolute;inset:0;background-image:repeating-linear-gradient(0deg,transparent 0,transparent 36px,rgba(255,255,255,.04) 36px,rgba(255,255,255,.09) 37px,transparent 38px,transparent 74px),repeating-linear-gradient(90deg,transparent 0,transparent 36px,rgba(255,255,255,.04) 36px,rgba(255,255,255,.09) 37px,transparent 38px,transparent 74px);-webkit-mask:radial-gradient(ellipse 85% 75% at 50% 45%,#000 0%,rgba(0,0,0,.55) 55%,transparent 92%);mask:radial-gradient(ellipse 85% 75% at 50% 45%,#000 0%,rgba(0,0,0,.55) 55%,transparent 92%);animation:flicker 6s ease-in-out infinite}
+@keyframes flicker{0%,100%{opacity:.5}18%{opacity:.82}40%{opacity:.42}62%{opacity:.72}82%{opacity:.5}}
+.cosmos-sparkles{position:absolute;inset:0}
+.sp{position:absolute;width:3px;height:3px;border-radius:50%;background:#fff;box-shadow:0 0 10px 2px rgba(255,255,255,.85);opacity:0;animation:blink 3s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:0;transform:scale(.3)}42%{opacity:1;transform:scale(1.3)}58%{opacity:.85;transform:scale(.9)}}
+.cosmos-scan-h{position:absolute;left:0;right:0;height:2px;top:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5) 25%,rgba(255,255,255,.95) 50%,rgba(255,255,255,.5) 75%,transparent);filter:blur(1.2px);box-shadow:0 0 24px rgba(255,255,255,.5);animation:scanDown 7s linear infinite}
+.cosmos-scan-v{position:absolute;top:0;bottom:0;width:2px;left:0;background:linear-gradient(0deg,transparent,rgba(255,255,255,.45) 25%,rgba(255,255,255,.9) 50%,rgba(255,255,255,.45) 75%,transparent);filter:blur(1.2px);box-shadow:0 0 24px rgba(255,255,255,.45);animation:scanRight 11s linear infinite}
+@keyframes scanDown{0%{transform:translateY(-20px);opacity:0}6%{opacity:1}94%{opacity:1}100%{transform:translateY(100vh);opacity:0}}
+@keyframes scanRight{0%{transform:translateX(-20px);opacity:0}6%{opacity:1}94%{opacity:1}100%{transform:translateX(100vw);opacity:0}}
+.cosmos-lines{position:absolute;inset:0;width:100%;height:100%}
+.cosmos-stars{position:absolute;inset:0;opacity:.5;background-image:radial-gradient(1.5px 1.5px at 12% 18%,#fff,transparent),radial-gradient(1px 1px at 78% 22%,#fff,transparent),radial-gradient(1.5px 1.5px at 35% 75%,#fff,transparent),radial-gradient(1px 1px at 88% 68%,#ddd,transparent),radial-gradient(1px 1px at 55% 12%,#fff,transparent),radial-gradient(1.5px 1.5px at 22% 52%,#ccc,transparent),radial-gradient(1px 1px at 67% 88%,#fff,transparent),radial-gradient(1px 1px at 92% 42%,#ddd,transparent),radial-gradient(1px 1px at 8% 82%,#fff,transparent);animation:twinkle 6s ease-in-out infinite alternate}
+@keyframes twinkle{0%{opacity:.3}100%{opacity:.7}}
+.hl-flow{animation:flow 11s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-1720}}
+
+/* ===== 顶栏 ===== */
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:14px 32px;border-bottom:1px solid var(--line);background:rgba(8,11,20,.55);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.h-home,.h-builder,.h-world{display:none;align-items:center;gap:12px;width:100%}
+body[data-mode=home] .h-home,body[data-mode=builder] .h-builder,body[data-mode=world] .h-world{display:flex}
+.brand{display:flex;align-items:center;gap:9px;cursor:pointer}
+.brand .dot{width:9px;height:9px;border-radius:2px;background:var(--accent);transform:rotate(45deg);box-shadow:0 0 12px var(--accent)}
+.brand .name{font-weight:600;font-size:15px;letter-spacing:-.01em}
+.brand .en{font-size:11px;color:var(--ink-3);letter-spacing:.06em}
+.spacer{flex:1}
+.back-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--line-strong);background:var(--glass);color:var(--ink-2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .18s;flex-shrink:0}
+.back-btn:hover{color:var(--ink);background:var(--glass-2)}
+.btn{font-family:inherit;font-size:13.5px;font-weight:500;padding:8px 16px;border-radius:7px;cursor:pointer;border:1px solid var(--line-strong);background:var(--glass);color:var(--ink);transition:all .18s;backdrop-filter:blur(8px)}
+.btn:hover{background:var(--glass-2);border-color:var(--accent)}
+.btn.primary{background:var(--ink);color:#0a0d16;border-color:var(--ink)}
+.btn.primary:hover{background:#fff}
+.btn.big{width:100%;padding:14px;font-size:15px;margin-top:8px}
+.builder-progress{font-size:13px;color:var(--ink-2)}
+.builder-progress b{color:var(--ink);font-weight:600}
+
+.world-tabs{display:flex;gap:2px;background:var(--glass);padding:3px;border-radius:8px;border:1px solid var(--line)}
+.wtab{font-size:13px;padding:6px 14px;border-radius:6px;cursor:pointer;color:var(--ink-2);transition:all .15s;font-weight:500}
+.wtab:hover{color:var(--ink)}
+.wtab.active{background:var(--glass-3);color:var(--ink)}
+.world-name{font-size:16px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.world-name .glyph{width:24px;height:24px;border-radius:5px;background:linear-gradient(135deg,#3a4a6b,#1a2238);display:flex;align-items:center;justify-content:center;color:#c8d4f0;font-size:12px;font-weight:500}
+
+.stage-controls{display:none;align-items:center;gap:7px}
+body[data-mode=world] .stage-controls{display:flex}
+.clock-info{font-size:13px;color:var(--ink-2);margin-left:6px}
+.world-nav{position:fixed;left:0;top:57px;bottom:0;width:176px;display:none;flex-direction:column;padding:16px 12px;border-right:1px solid var(--line);background:rgba(8,11,20,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:15;overflow-y:auto}
+body[data-mode=world] .world-nav{display:flex}
+.wnav{display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:8px;color:var(--ink-2);cursor:pointer;font-size:14px;font-weight:500;transition:all .15s;margin-bottom:3px}
+.wnav:hover{background:var(--glass);color:var(--ink)}
+.wnav.active{background:var(--glass-2);color:var(--ink)}
+body[data-mode=world]{overflow:hidden}
+body[data-mode=world] main{margin-left:176px;height:calc(100vh - 57px);overflow:hidden}
+.btn-ctrl{width:32px;height:32px;border-radius:7px;border:1px solid var(--line-strong);background:var(--glass);color:var(--ink-2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .18s}
+.btn-ctrl:hover{color:var(--ink);border-color:var(--accent)}
+.btn-ctrl.primary{background:var(--ink);color:#0a0d16;border-color:var(--ink);width:34px;height:34px}
+
+.view{display:none;position:relative;z-index:2;animation:fade .4s both}
+.view.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* HOME */
+.home-wrap{max-width:1040px;margin:0 auto;padding:120px 32px 90px;text-align:center}
+.home-kicker{font-size:12px;letter-spacing:.32em;color:var(--accent);text-transform:uppercase;margin-bottom:22px;font-weight:500;text-shadow:0 0 14px rgba(255,255,255,.5)}
+.home-title{font-family:'Instrument Serif',Georgia,serif;font-weight:400;font-size:64px;line-height:1.05;letter-spacing:-.02em;color:var(--ink);text-shadow:0 2px 30px rgba(0,0,0,.5)}
+.home-title em{font-style:italic;color:var(--accent)}
+.home-sub{font-size:16px;color:var(--ink-2);margin:20px auto 0;max-width:480px;line-height:1.6}
+.home-section{font-size:12px;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase;margin:0 0 22px;font-weight:500;display:flex;align-items:center;gap:12px;text-align:left}
+.home-section .count{color:var(--ink-4)}
+.home-section::after{content:"";flex:1;height:1px;background:var(--line)}
+.home-list{max-width:1040px;margin:0 auto;padding:0 32px 80px}
+.world-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px}
+.world-card{border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;transition:all .25s;background:rgba(16,17,23,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.world-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 14px 40px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.2)}
+.wc-cover{height:104px;position:relative;background:#1a2238;transition:background .25s;overflow:hidden}
+.cover-tools{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;opacity:0;transition:opacity .2s;background:rgba(6,8,15,.55)}
+.wc-cover:hover .cover-tools{opacity:1}
+.color-dot{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,.75);transition:transform .15s}
+.color-dot:hover{transform:scale(1.18)}
+.cover-upload{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.92);color:#222;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;position:relative}
+.cover-upload input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.wc-body{padding:14px 16px;text-align:left}
+.wc-body h3{font-size:15.5px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.wc-body h3 em{font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;color:var(--ink-3);font-size:14px;margin-left:4px}
+.wc-body .vis{font-size:12.5px;color:var(--ink-2);margin-top:5px;line-height:1.5}
+.wc-meta{display:flex;gap:14px;margin-top:11px;font-size:11.5px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:9px}
+
+/* BUILDER */
+.builder-wrap{display:grid;grid-template-columns:250px 1fr;min-height:calc(100vh - 57px)}
+.builder-stages{border-right:1px solid var(--line);padding:28px 22px;background:rgba(8,11,20,.4);backdrop-filter:blur(10px)}
+.bs-title{font-size:11px;letter-spacing:.14em;color:var(--ink-3);text-transform:uppercase;margin-bottom:20px;font-weight:600}
+.stage-item{display:flex;align-items:flex-start;gap:11px;padding:9px 0;position:relative;cursor:pointer}
+.stage-item .num{width:24px;height:24px;border-radius:50%;border:1px solid var(--line-strong);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink-3);flex-shrink:0;transition:all .18s;font-weight:500;background:rgba(8,11,20,.5)}
+.stage-item.done .num{background:var(--accent);color:#0a0d16;border-color:var(--accent)}
+.stage-item.current .num{border-color:var(--accent);border-width:2px;font-weight:600;color:var(--accent);box-shadow:0 0 12px rgba(255,255,255,.4)}
+.stage-item .txt .n{font-size:13.5px;color:var(--ink-3);font-weight:500}
+.stage-item.current .txt .n{color:var(--ink);font-weight:600}
+.stage-item.done .txt .n{color:var(--ink)}
+.stage-item .txt .d{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+.stage-line{position:absolute;left:12px;top:33px;width:1px;height:calc(100% - 20px);background:var(--line)}
+.stage-item:last-child .stage-line{display:none}
+
+.builder-main{padding:34px 42px;overflow-y:auto;max-height:calc(100vh - 57px)}
+.stage-panel{display:none}.stage-panel.active{display:block;animation:fade .3s both}
+.bm-label{font-size:11px;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;font-weight:600}
+.bm-head h2{font-family:'Instrument Serif',serif;font-size:32px;font-weight:400;letter-spacing:-.01em;margin-top:6px;color:var(--ink)}
+.bm-head h2 em{font-style:italic;color:var(--accent)}
+.bm-head .desc{font-size:14px;color:var(--ink-2);margin-top:10px;max-width:560px;line-height:1.6}
+.chat{display:flex;flex-direction:column;gap:12px;margin:24px 0}
+.msg{max-width:76%;padding:12px 16px;border-radius:11px;font-size:14px;line-height:1.6}
+.msg.ai{background:var(--glass);border:1px solid var(--line);border-bottom-left-radius:3px;align-self:flex-start}
+.msg.ai .who{font-size:10.5px;letter-spacing:.1em;color:var(--accent);text-transform:uppercase;margin-bottom:4px;font-weight:600}
+.msg.me{background:var(--accent);color:#0a0d16;border-bottom-right-radius:3px;align-self:flex-end}
+.msg.me .who{font-size:10.5px;letter-spacing:.1em;color:rgba(10,13,22,.55);text-transform:uppercase;margin-bottom:4px;font-weight:600;text-align:right}
+.created-chars{display:flex;gap:14px;flex-wrap:wrap;margin:22px 0}
+.cc-card{width:138px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:rgba(16,17,23,.82)}
+.cc-portrait{height:118px;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:44px;color:rgba(255,255,255,.7);font-style:italic}
+.cc-p1{background:linear-gradient(135deg,#3a4a6b,#1a2238)}.cc-p2{background:linear-gradient(135deg,#6b3a5a,#381a2a)}.cc-p3{background:linear-gradient(135deg,#3a5a3a,#1a2818)}
+.cc-body{padding:10px 12px}
+.cc-body .n{font-size:14px;font-weight:600;color:var(--ink)}
+.cc-body .r{font-size:11px;color:var(--ink-3)}
+.cc-body .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.tag{font-size:10.5px;padding:2px 7px;border-radius:4px;background:var(--glass-2);color:var(--ink-2)}
+.field-label{font-size:11px;letter-spacing:.1em;color:var(--ink-3);text-transform:uppercase;font-weight:600;margin:22px 0 10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:7px 14px;border-radius:20px;border:1px solid var(--line-strong);background:var(--glass);font-size:13px;color:var(--ink-2);cursor:pointer;transition:.15s}
+.chip:hover{border-color:var(--accent)}.chip.selected{background:var(--accent);color:#0a0d16;border-color:var(--accent)}
+.summary-card{background:var(--glass);border:1px solid var(--line);border-radius:9px;padding:14px 16px;margin-top:8px}
+.summary-card.accent{border-left:3px solid var(--accent)}
+.summary-card .sc-label{font-size:10.5px;letter-spacing:.1em;color:var(--accent);text-transform:uppercase;font-weight:600;margin-bottom:6px}
+.summary-card p{font-size:14px;color:var(--ink-2);line-height:1.6}
+.rule-edit{list-style:none;display:flex;flex-direction:column;gap:8px;margin:18px 0}
+.rule-edit li{font-size:14px;color:var(--ink);padding:11px 14px;background:var(--glass);border:1px solid var(--line);border-radius:8px;display:flex;justify-content:space-between;align-items:center}
+.rule-edit .rm{color:var(--ink-3);cursor:pointer;font-size:16px}.rule-edit .rm:hover{color:var(--bad)}
+.loc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin:18px 0}
+.loc-node{padding:12px 14px;background:var(--glass);border:1px solid var(--line);border-radius:8px;font-size:13.5px;color:var(--ink)}
+.loc-node-add{padding:12px 14px;border:1px dashed var(--line-strong);border-radius:8px;font-size:13px;color:var(--ink-3);cursor:pointer;text-align:center}
+.loc-node-add:hover{color:var(--ink);border-color:var(--accent)}
+.health{list-style:none;display:flex;flex-direction:column;gap:10px;margin:18px 0 20px}
+.health li{font-size:14px;padding:11px 14px;border-radius:8px;background:var(--glass);border:1px solid var(--line)}
+.health li.ok{color:var(--ok)}.health li.warn{color:var(--warn)}
+.builder-input{display:flex;gap:9px;margin-top:14px}
+.builder-input input{flex:1;background:var(--glass);border:1px solid var(--line-strong);border-radius:8px;padding:12px 15px;font-family:inherit;font-size:14px;color:var(--ink)}
+.builder-input input::placeholder{color:var(--ink-3)}
+.builder-input input:focus{outline:none;border-color:var(--accent)}
+.step-actions{margin-top:14px;display:flex;justify-content:flex-end;border-top:1px solid var(--line);padding-top:16px}
+
+/* STAGE */
+.stage-grid{display:grid;grid-template-columns:210px 1fr 248px;height:calc(100vh - 57px)}
+.cast,.context{padding:20px;overflow-y:auto;position:relative;z-index:5;background:rgba(8,11,20,.45);backdrop-filter:blur(10px)}
+.narrative{padding:26px 32px;overflow-y:auto;position:relative;z-index:5}
+.cast{border-right:1px solid var(--line)}
+.context{border-left:1px solid var(--line);display:flex;flex-direction:column}
+.col-label{font-size:10.5px;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase;margin-bottom:14px;font-weight:600}
+.character{display:flex;gap:10px;align-items:center;padding:9px;border-radius:8px;margin-bottom:4px;cursor:pointer;transition:background .15s}
+.character:hover{background:var(--glass)}
+.character.present{background:var(--glass)}
+.character.absent{opacity:.45}
+.portrait{width:36px;height:36px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:17px;color:rgba(255,255,255,.8);font-style:italic;flex-shrink:0}
+.p1{background:linear-gradient(135deg,#3a4a6b,#1a2238)}.p2{background:linear-gradient(135deg,#6b3a5a,#381a2a)}.p3{background:linear-gradient(135deg,#3a5a3a,#1a2818)}
+.ci .name{font-size:13.5px;font-weight:600;color:var(--ink)}.ci .role{font-size:11px;color:var(--ink-3)}
+.ci .mood{font-size:11px;margin-top:2px}.mood.angry{color:var(--bad)}.mood.wary{color:var(--warn)}.mood.calm{color:var(--ok)}
+
+.chapter{margin-bottom:8px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+.ch-label{font-size:11px;letter-spacing:.16em;color:var(--accent);text-transform:uppercase;font-weight:600}
+.ch-title{font-family:'Instrument Serif',serif;font-size:28px;font-weight:400;margin-top:4px;letter-spacing:-.01em;color:var(--ink)}
+.synopsis{font-size:14px;color:var(--ink-2);margin-top:10px;line-height:1.7;max-width:680px}
+
+.timeline{position:relative;display:flex;justify-content:space-between;margin:8px 6px 30px;padding:0 6px}
+.tl-track{position:absolute;left:24px;right:24px;top:7px;height:2px;background:var(--line-strong);z-index:0}
+.tl-node{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:5px;flex:1}
+.tl-dot{width:14px;height:14px;border-radius:50%;background:#0a0d16;border:2px solid var(--line-strong)}
+.tl-node.done .tl-dot{background:var(--accent);border-color:var(--accent)}
+.tl-node.current .tl-dot{background:var(--accent);border-color:var(--accent);transform:scale(1.2);box-shadow:0 0 0 4px rgba(255,255,255,.18),0 0 16px var(--accent)}
+.tl-label{font-size:11.5px;color:var(--ink-2);font-weight:500;margin-top:6px}
+.tl-node.current .tl-label{color:var(--ink);font-weight:600}
+.tl-tick{font-size:10px;color:var(--ink-3)}
+
+.beat{margin-bottom:24px}
+.beat-label{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.beat-dot{width:6px;height:6px;border-radius:50%;background:var(--ink-3)}
+.beat.current .beat-dot{background:var(--accent);box-shadow:0 0 8px var(--accent)}
+.beat-meta{font-size:10.5px;letter-spacing:.08em;color:var(--ink-3);text-transform:uppercase;font-weight:600}
+.beat-meta b{color:var(--ink-2)}
+.prose{font-size:16.5px;line-height:1.78;color:var(--ink);font-weight:400}
+.event{margin-top:11px;border-left:2px solid;padding:8px 13px;background:var(--glass);border-radius:0 7px 7px 0;border:1px solid var(--line);border-left-width:2px}
+.event.dialogue{border-left-color:var(--ink-3)}.event.conflict{border-left-color:var(--bad)}
+.event .tag{font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px;color:var(--ink-3);font-weight:600}
+.event.conflict .tag{color:var(--bad)}
+.event .body{font-size:13.5px;color:var(--ink-2)}
+.event .speaker{font-weight:600;color:var(--ink)}
+
+.ctx-block{margin-bottom:18px}
+.ctx-block .val{font-size:14px;margin-top:3px;color:var(--ink)}
+.ctx-block .val .dim{color:var(--ink-3);font-size:12.5px}
+.rel-card{background:var(--glass);border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:5px}
+.rel-card .pair{font-size:12.5px;margin-bottom:5px;font-weight:500;color:var(--ink)}
+.rel-card .delta{font-size:12px;display:flex;justify-content:space-between;color:var(--bad)}
+.plot-points{list-style:none;display:flex;flex-direction:column;gap:7px}
+.plot-points li{font-size:12.5px;color:var(--ink-2);display:flex;align-items:center;gap:8px;padding:8px 9px;background:var(--glass);border-radius:6px}
+.plot-points li b{color:var(--ink);font-weight:600;font-size:11px;background:rgba(8,11,20,.6);padding:2px 6px;border-radius:3px;border:1px solid var(--line)}
+.pp-tag{margin-left:auto;font-size:10px;color:var(--accent)}
+.meters{display:flex;align-items:center;gap:22px;padding:11px 32px;border-bottom:1px solid var(--line);background:rgba(8,11,20,.5);font-size:12px;flex-wrap:wrap}
+.meter{display:flex;align-items:center;gap:8px;color:var(--ink-2)}
+.meter .m-k{color:var(--ink-3);font-size:11px}
+.meter .m-v{color:var(--ink);font-weight:500}
+.meter .m-v.warn{color:var(--warn)}
+.meter .m-bar{display:inline-block;width:60px;height:5px;border-radius:3px;background:var(--glass-2);overflow:hidden}
+.meter .m-bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.meter.live{color:var(--ok);font-weight:500}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);animation:livepulse 1.4s ease-in-out infinite}
+@keyframes livepulse{0%,100%{opacity:.45}50%{opacity:1}}
+.meter.stats{margin-left:auto;color:var(--ink-3);gap:14px}
+.meter.stats span b{color:var(--ink);font-weight:600}
+.char-d{padding:11px;border-radius:9px;margin-bottom:8px;border:1px solid var(--line);background:var(--glass)}
+.char-d.present{background:var(--glass-2)}
+.char-d.absent{opacity:.55}
+.char-top{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.char-top .name{font-size:14px;font-weight:600;color:var(--ink)}
+.char-top .role{font-size:11px;color:var(--ink-3)}
+.bars{display:flex;flex-direction:column;gap:5px;margin-bottom:9px}
+.bar{display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--ink-3)}
+.bar>span{width:34px;flex-shrink:0}
+.bar i{flex:1;height:4px;border-radius:2px;background:var(--accent);display:block;opacity:.85}
+.char-goal{font-size:11.5px;color:var(--ink-2);margin-bottom:4px}
+.char-goal .pg{float:right;font-size:10px;color:var(--warn)}
+.char-do{font-size:11.5px;color:var(--ink-2);margin-bottom:5px}
+.char-do::before{content:"▸ ";color:var(--accent)}
+.char-loc{font-size:11px;color:var(--ink-3);margin-bottom:5px}
+.thought{font-size:11.5px;color:var(--ink-3);font-style:italic;padding:6px 9px;background:rgba(8,11,20,.4);border-left:2px solid var(--accent);border-radius:0 5px 5px 0;line-height:1.5}
+.suspense{list-style:none;display:flex;flex-direction:column;gap:6px}
+.suspense li{font-size:12px;color:var(--ink-2);display:flex;gap:7px;line-height:1.4}
+.suspense li b{color:var(--warn);font-weight:600}
+.elsewhere{list-style:none;display:flex;flex-direction:column;gap:7px}
+.elsewhere li{font-size:11.5px;color:var(--ink-2);line-height:1.4;padding-left:10px;border-left:2px solid var(--line-strong)}
+.elsewhere li b{color:var(--ink);font-weight:600;display:block;font-size:11px;margin-bottom:1px}
+.tl-full{margin-top:8px}
+.tl-act{margin:22px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.tl-act-h{font-family:'Instrument Serif',serif;font-size:18px;color:var(--accent);font-style:italic}
+.tl-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;font-size:13.5px;color:var(--ink-2);border-left:2px solid var(--line-strong);margin-bottom:6px;background:var(--glass)}
+.tl-item .tl-t{font-size:11px;color:var(--ink-3);font-weight:600;min-width:52px}
+.tl-item .tl-type{font-size:10px;padding:2px 7px;border-radius:3px;background:var(--glass-2);color:var(--accent);min-width:40px;text-align:center}
+.tl-item.now{border-left-color:var(--accent);background:var(--glass-2);color:var(--ink)}
+.meters.static{flex-wrap:wrap}
+.story-wrap{max-width:720px;margin:0 auto;padding:44px 32px 90px}
+.story-head{text-align:center;margin-bottom:44px;padding-bottom:26px;border-bottom:1px solid var(--line)}
+.sh-label{font-size:11px;letter-spacing:.2em;color:var(--accent);text-transform:uppercase;font-weight:600}
+.story-head h2{font-family:'Instrument Serif',serif;font-size:42px;font-weight:400;margin-top:10px;letter-spacing:-.01em}
+.sh-meta{font-size:12px;color:var(--ink-3);margin-top:10px}
+.chapter{margin-bottom:52px}
+.chap-no{font-size:11px;letter-spacing:.25em;color:var(--ink-3);text-transform:uppercase;font-weight:600;text-align:center;margin-bottom:6px}
+.chap-title{font-family:'Instrument Serif',serif;font-size:28px;font-weight:400;text-align:center;margin-bottom:28px;letter-spacing:.08em;color:var(--ink)}
+.chapter p{font-family:'Instrument Serif',serif;font-size:18px;line-height:1.9;color:var(--ink);margin-bottom:20px;text-indent:2em}
+.wip{color:var(--accent);font-size:14px;text-indent:0;animation:cursorBlink 1.1s steps(2) infinite}
+@keyframes cursorBlink{50%{opacity:0}}
+.tl-compact{display:flex;flex-direction:column;gap:6px}
+.tlc-item{font-size:12.5px;color:var(--ink-2);padding:7px 9px;border-radius:6px;background:var(--glass-2);border-left:2px solid transparent}
+.tlc-item b{color:var(--ink);font-weight:600;margin-right:6px}
+.tlc-item .muted{color:var(--ink-3);font-size:11px;margin-left:4px}
+.tlc-item.now{border-left-color:var(--accent)}
+.view[data-view=workbench],.view[data-view=cast]{height:calc(100vh - 57px);overflow:hidden}
+.view[data-view=story]{height:calc(100vh - 57px);overflow:auto}
+.wb{height:100%;display:grid;grid-template-columns:198px 1fr;grid-template-rows:1fr;gap:1px;background:var(--line)}
+.view[data-view=chronicle]{height:calc(100vh - 57px);overflow:hidden}
+.chr{height:100%;display:flex;flex-direction:column}
+.chr-head{padding:13px 20px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:14px;flex-shrink:0}
+.chr-title{font-family:'Instrument Serif',serif;font-size:22px;font-weight:400}
+.chr-sub{font-size:12px;color:var(--ink-3)}
+.chr-cur{margin-left:auto;font-size:12px;color:var(--accent);font-weight:600}
+.chr-tl{flex-shrink:0;height:40%;min-height:210px;border-bottom:1px solid var(--line);padding:8px 0 8px 20px;overflow-x:auto;overflow-y:hidden;cursor:grab;user-select:none}
+.chr-stream{flex:1;overflow:auto;padding:16px 20px}
+.chr-evt{display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:8px;background:var(--glass);border:1px solid var(--line);border-left:3px solid var(--line-strong);margin-bottom:8px;cursor:pointer;transition:.15s}
+.chr-evt:hover{border-left-color:var(--accent);background:var(--glass-2)}
+.chr-evt.now{border-left-color:var(--accent);background:var(--glass-2)}
+.chr-evt .chr-t{font-size:11px;color:var(--ink-3);font-weight:600;min-width:52px}
+.chr-evt .chr-type{font-size:10px;padding:2px 8px;border-radius:3px;background:var(--glass-2);color:var(--accent);min-width:42px;text-align:center}
+.chr-evt .chr-name{font-size:13.5px;color:var(--ink)}
+.wb-panel{background:#0c0e15;overflow:auto;padding:13px 14px;min-width:0}
+.wb-char{grid-column:1;grid-row:1;display:flex;flex-direction:column;gap:7px}.wb-center{grid-column:2;grid-row:1}
+.wb-timeline{grid-column:1/-1;grid-row:2;padding:6px 14px;overflow:hidden}
+.cb-chip{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;background:var(--glass-2);border:1px solid var(--line-strong);cursor:pointer;transition:.15s;font-size:13.5px;color:var(--ink)}
+.cb-chip:hover{border-color:var(--accent);background:var(--glass-3)}
+.cb-chip.absent{opacity:.5}
+.cb-chip .portrait{width:30px;height:30px;border-radius:50%;font-size:15px;flex-shrink:0}
+.cb-mini{font-size:10.5px;color:var(--ink-3);font-weight:400;margin-top:1px}
+.view[data-view=worldview]{height:calc(100vh - 57px);overflow:hidden}
+.wv-book{height:100%;display:flex;flex-direction:column}
+.wv-head{padding:11px 20px;border-bottom:1px solid var(--line);flex-shrink:0;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.wv-title{font-family:'Instrument Serif',serif;font-size:22px;font-weight:400}
+.wv-title em{font-style:italic;color:var(--accent)}
+.wv-body{flex:1;display:grid;grid-template-columns:210px 1fr;gap:1px;background:var(--line);overflow:hidden}
+.wv-toc{background:#0c0e15;overflow:auto;padding:14px 12px}
+.wv-toc-item{font-size:13px;color:var(--ink-2);padding:8px 10px;border-radius:6px;cursor:pointer;transition:.15s;margin-bottom:2px;line-height:1.4}
+.wv-toc-item:hover{background:var(--glass);color:var(--ink)}
+.wv-toc-item.active{background:var(--glass-2);color:var(--ink)}
+.wv-toc-group{font-size:10px;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase;font-weight:600;margin:14px 8px 6px}
+.wv-toc-group:first-child{margin-top:0}
+.wv-content{background:#0c0e15;overflow:auto;padding:32px 44px;max-width:820px}
+.wv-content h2{font-family:'Instrument Serif',serif;font-size:27px;font-weight:400;margin-bottom:18px;color:var(--ink);letter-spacing:-.01em}
+.wv-content p{font-size:15.5px;color:var(--ink-2);line-height:1.85;margin-bottom:16px}
+.wv-content ul{list-style:none;margin-bottom:16px}
+.wv-content li{font-size:14.5px;color:var(--ink-2);line-height:1.75;padding-left:16px;position:relative}
+.wv-content li::before{content:"·";position:absolute;left:4px;color:var(--accent)}
+.wv-card li::before{content:"·";position:absolute;left:0;color:var(--accent)}
+.ph{font-size:11px;letter-spacing:.1em;color:var(--ink-3);text-transform:uppercase;font-weight:600;margin-bottom:11px}
+.ph-sub{color:var(--ink-4);font-weight:400;letter-spacing:0;margin-left:6px;text-transform:none}
+.meters-mini{display:flex;flex-direction:column;gap:7px}
+.meters-mini .meter{font-size:11.5px}.meters-mini .m-bar{width:50px}
+.rule-list-mini,.suspense-mini{list-style:none;font-size:11.5px;color:var(--ink-2);line-height:1.55}
+.rule-list-mini li{padding:2px 0 2px 11px;position:relative}.rule-list-mini li::before{content:"·";position:absolute;left:0;color:var(--accent)}
+.suspense-mini li{padding:2px 0}.suspense-mini li b{color:var(--warn);margin-right:4px}
+.elsewhere-mini{list-style:none;font-size:11.5px;color:var(--ink-2)}
+.elsewhere-mini li{padding:5px 0;border-bottom:1px solid var(--line);line-height:1.4}
+.elsewhere-mini li:last-child{border-bottom:0}
+.elsewhere-mini li b{color:var(--ink);display:block;font-size:10.5px}
+.wb-text{font-size:11.5px;color:var(--ink-2);line-height:1.6;margin-bottom:2px}
+.char-d{cursor:pointer}
+.char-detail{display:none;margin-top:9px}
+.char-d.open .char-detail{display:block}
+.evt-card{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);width:420px;max-width:90vw;background:rgba(16,18,26,.96);border:1px solid var(--line-strong);border-radius:12px;padding:22px 24px;z-index:75;opacity:0;pointer-events:none;transition:all .25s;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.evt-card.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+.ec-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.ec-tick{font-size:11px;font-weight:600;color:var(--accent)}
+.ec-type{font-size:10px;padding:2px 8px;border-radius:3px;background:rgba(232,116,106,.18);color:var(--bad)}
+.ec-close{margin-left:auto;background:none;border:none;color:var(--ink-3);font-size:20px;cursor:pointer;line-height:1}
+.ec-close:hover{color:var(--ink)}
+.evt-card h3{font-family:'Instrument Serif',serif;font-size:23px;font-weight:400;margin-bottom:10px;color:var(--ink)}
+.evt-card p{font-size:14px;color:var(--ink-2);line-height:1.7}
+#playhead{cursor:ew-resize}
+.cast-grid{height:100%;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line)}
+.cast-left,.cast-right{background:#0c0e15;overflow:auto;padding:18px}
+.tl-bar{position:relative;height:100%;display:flex;flex-direction:column;justify-content:center;padding-top:4px;min-width:1380px;padding-right:20px}
+.tl-ruler{display:flex;align-items:center;font-size:10px;color:var(--ink-3);height:16px;border-bottom:1px solid var(--line)}
+.tl-ruler .tl-rname{width:60px;flex-shrink:0}
+.tl-ruler>span{flex:1;text-align:left}
+.tl-row{display:flex;align-items:center;height:24px;border-bottom:1px solid var(--line)}
+.tl-row .tl-name{width:60px;font-size:11px;color:var(--ink-2);flex-shrink:0;padding-left:2px}
+.tl-lane{flex:1;position:relative;height:100%}
+.tl-clip{position:absolute;height:17px;top:3px;border-radius:4px;background:var(--glass-2);border:1px solid var(--line-strong);font-size:10px;color:var(--ink-2);display:flex;align-items:center;padding:0 6px;white-space:nowrap;overflow:hidden}
+.tl-clip.act{background:rgba(200,204,214,.13);color:var(--ink)}
+.tl-clip.evt{background:rgba(232,116,106,.18);color:var(--bad)}
+.tl-clip.now{outline:1px solid var(--accent)}
+.tl-evt{position:absolute;font-size:9.5px;color:var(--accent);white-space:nowrap;transform:translateX(-50%);top:4px}
+.tl-evt.now{color:var(--bad);font-weight:600}
+.tl-playhead{position:absolute;top:20px;bottom:2px;width:3px;background:var(--accent);box-shadow:0 0 10px var(--accent);cursor:ew-resize;z-index:3}
+.tl-playhead::after{content:"";position:absolute;top:0;bottom:0;left:-9px;width:21px}
+.director-btn{margin-top:auto;padding:13px;border-radius:8px;cursor:pointer;text-align:center;background:var(--ink);color:#0a0d16;font-size:13.5px;font-weight:600;transition:all .18s}
+.director-btn:hover{background:#fff;box-shadow:0 0 24px rgba(233,236,245,.3)}
+.director-btn .hint{display:block;font-size:10.5px;color:rgba(10,13,22,.55);font-weight:400;margin-top:2px}
+
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;opacity:0;pointer-events:none;transition:.25s;backdrop-filter:blur(2px)}
+.backdrop.show{opacity:1;pointer-events:auto}
+.director-panel{position:fixed;top:0;right:0;bottom:0;width:360px;z-index:80;background:rgba(12,16,28,.92);border-left:1px solid var(--line-strong);transform:translateX(100%);transition:transform .35s cubic-bezier(.2,.8,.2,1);padding:26px;display:flex;flex-direction:column;box-shadow:-16px 0 50px rgba(0,0,0,.5)}
+.director-panel.open{transform:translateX(0)}
+.dp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.dp-head h2{font-size:19px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.dp-close{cursor:pointer;color:var(--ink-3);font-size:22px;background:none;border:none;line-height:1}
+.dp-close:hover{color:var(--ink)}
+.dp-sub{font-size:12.5px;color:var(--ink-2);margin-bottom:22px;line-height:1.5}
+.intervene-type{display:flex;align-items:center;gap:12px;padding:12px;border-radius:8px;cursor:pointer;border:1px solid var(--line);margin-bottom:8px;transition:all .15s;background:var(--glass)}
+.intervene-type:hover{border-color:var(--accent)}
+.intervene-type.selected{border-color:var(--accent);background:var(--glass-2)}
+.it-soft{font-size:10px;letter-spacing:.06em;padding:3px 7px;border-radius:4px;font-weight:600;text-transform:uppercase}
+.it-soft.green{background:rgba(126,203,142,.18);color:var(--ok)}.it-soft.amber{background:rgba(220,177,90,.18);color:var(--warn)}.it-soft.red{background:rgba(232,116,106,.18);color:var(--bad)}
+.it-text .t{font-size:14px;font-weight:500;color:var(--ink)}.it-text .d{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+.dp-textarea{margin-top:14px;background:var(--glass);border:1px solid var(--line-strong);border-radius:8px;padding:12px;font-family:inherit;font-size:14px;resize:none;min-height:80px;width:100%;color:var(--ink)}
+.dp-textarea::placeholder{color:var(--ink-3)}
+.dp-textarea:focus{outline:none;border-color:var(--accent)}
+.dp-submit{margin-top:12px;padding:12px;border-radius:8px;background:var(--ink);color:#0a0d16;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;transition:.15s}
+.dp-submit:hover{background:#fff}
+
+/* CHARACTERS */
+.chars-wrap{max-width:1040px;margin:0 auto;padding:34px 32px}
+.chars-head{margin-bottom:26px}
+.chars-head h2{font-family:'Instrument Serif',serif;font-size:30px;font-weight:400;letter-spacing:-.01em;color:var(--ink)}
+.chars-head h2 em{font-style:italic;color:var(--accent)}
+.chars-head .sub{font-size:13px;color:var(--ink-2);margin-top:5px}
+.char-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:36px}
+.char-big{border:1px solid var(--line);border-radius:11px;overflow:hidden;background:rgba(16,17,23,.82);transition:.18s}
+.char-big:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.cb-portrait{height:168px;display:flex;align-items:center;justify-content:center;font-family:'Instrument Serif',serif;font-size:60px;color:rgba(255,255,255,.7);font-style:italic}
+.cb-body{padding:13px 15px}
+.cb-body .n{font-size:17px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.cb-body .r{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+.cb-body .goal{font-size:12.5px;color:var(--ink-2);margin-top:9px;border-top:1px solid var(--line);padding-top:8px;line-height:1.5}
+.cb-body .goal b{color:var(--ink);font-weight:600}
+.cb-body .tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.relation-map{border:1px solid var(--line);border-radius:11px;padding:22px;background:rgba(16,17,23,.82)}
+.relation-map h3{font-size:11px;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase;font-weight:600;margin-bottom:4px}
+.relation-map .sub{font-size:12px;color:var(--ink-3);margin-bottom:14px}
+
+/* WORLD STATE */
+.ws-wrap{max-width:900px;margin:0 auto;padding:34px 32px}
+.ws-head h2{font-family:'Instrument Serif',serif;font-size:30px;font-weight:400;letter-spacing:-.01em;color:var(--ink)}
+.ws-head h2 em{font-style:italic;color:var(--accent)}
+.ws-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:26px}
+.ws-card{border:1px solid var(--line);border-radius:11px;padding:20px;background:rgba(16,17,23,.82)}
+.ws-card h3{font-size:11px;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase;margin-bottom:13px;font-weight:600}
+.ws-clock{font-family:'Instrument Serif',serif;font-size:26px;letter-spacing:-.01em;color:var(--ink)}
+.ws-clock b{font-weight:400;color:var(--accent)}
+.ws-flags{display:flex;flex-direction:column;gap:7px;margin-top:14px}
+.flag{display:flex;justify-content:space-between;font-size:13px;color:var(--ink-2)}
+.flag .on{color:var(--bad);font-weight:500}.flag .off{color:var(--ink-3)}
+.rule-list{list-style:none;display:flex;flex-direction:column;gap:9px}
+.rule-list li{font-size:13px;color:var(--ink-2);padding-left:15px;position:relative;line-height:1.5}
+.rule-list li::before{content:"—";position:absolute;left:0;color:var(--ink-4)}
+.vs-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:13px}
+.vs-row .k{color:var(--ink-3);width:50px;flex-shrink:0}
+.vs-row .v{color:var(--ink-2)}
+.vs-swatch{width:16px;height:16px;border-radius:4px;border:1px solid var(--line)}
+.loc-list{list-style:none;display:flex;flex-direction:column;gap:7px}
+.loc-list li{font-size:13px;color:var(--ink-2);padding:7px 10px;background:var(--glass);border-radius:6px}
+
+::-webkit-scrollbar{width:7px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+@media(max-width:900px){.stage-grid{grid-template-columns:1fr}.cast,.context{display:none}.builder-wrap{grid-template-columns:1fr}.ws-grid{grid-template-columns:1fr}.home-title{font-size:42px}}
+</style>
+</head>
+<body data-mode=home data-view=home>
+
+<!-- 星海整体背景 -->
+<div class=cosmos>
+  <div class=cosmos-glow></div>
+  <canvas id="cosmos-canvas" style="position:absolute;inset:0;width:100%;height:100%"></canvas>
+</div>
+
+<header class=topbar>
+  <div class=h-home>
+    <div class=brand onclick=nav('home')><span class=dot></span><span class=name>故事梦工厂</span><span class=en>Story Dream Factory</span></div>
+    <span class=spacer></span>
+    <button class="btn primary" onclick="nav('builder')">新建世界</button>
+  </div>
+  <div class=h-builder>
+    <button class=back-btn onclick=nav('home') title="返回主页">←</button>
+    <div class=brand><span class=dot></span><span class=name>故事梦工厂</span></div>
+    <span class=builder-progress id=bp>新世界 · <b>第 1 / 7 步 · 愿景</b></span>
+    <span class=spacer></span>
+  </div>
+  <div class=h-world>
+    <button class=back-btn onclick=nav('home') title="返回世界库">←</button>
+    <div class=world-name><span class=glyph>艾</span>艾尔德兰</div>
+    <div class=clock-info>第三幕 · Tick 12 · 冬月十四</div>
+    <span class="meter live"><span class=live-dot></span>运行中</span>
+    <span class=spacer></span>
+    <div class=stage-controls>
+      <button class="btn-ctrl primary" id=playBtn>▶</button>
+      <button class=btn-ctrl onclick=openDirector() title="导演介入">🎬</button>
+    </div>
+  </div>
+</header>
+
+<nav class="world-nav" id=worldNav>
+  <a class=wnav data-w=worldview onclick=nav('worldview')>🌍 世界背景</a>
+  <a class="wnav active" data-w=workbench onclick=nav('workbench')>🎭 剧目舞台</a>
+  <a class=wnav data-w=chronicle onclick=nav('chronicle')>⏳ 时间事件</a>
+  <a class=wnav data-w=cast onclick=nav('cast')>👥 角色关系</a>
+  <a class=wnav data-w=story onclick=nav('story')>📖 故事</a>
+</nav>
+
+<main>
+
+<section class="view active" data-view=home>
+  <div class=home-wrap>
+    <div class=home-kicker>Story Dream Factory</div>
+    <h1 class=home-title>让故事 <em>自行生长</em></h1>
+  </div>
+  <div class=home-list>
+    <div class=home-section>你的世界 <span class=count>· 4</span></div>
+    <div class=world-grid>
+      <div class=world-card onclick=loadWorld('长安夜雨')>
+        <div class=wc-cover><div class=cover-tools onclick="event.stopPropagation()">
+          <span class=color-dot style=background:#8a2a1a onclick="setColor(this,'#8a2a1a')"></span>
+          <span class=color-dot style=background:#6a2a8a onclick="setColor(this,'#6a2a8a')"></span>
+          <span class=color-dot style=background:#1a4a4a onclick="setColor(this,'#1a4a4a')"></span>
+          <span class=color-dot style=background:#c8a24a onclick="setColor(this,'#c8a24a')"></span>
+          <label class=cover-upload title="上传图片">⇪<input type=file accept=image/* hidden onchange=onUpload(event)></label>
+        </div></div>
+        <div class=wc-body><h3>长安夜雨<em>Chang'an</em></h3><div class=vis>盛唐将倾，长安城里权臣、诗人、刺客与胡商各怀心事。</div><div class=wc-meta><span>中国历史</span><span>第二幕 · Tick 9</span></div></div>
+      </div>
+      <div class=world-card onclick=loadWorld('霓虹修道院')>
+        <div class=wc-cover><div class=cover-tools onclick="event.stopPropagation()">
+          <span class=color-dot style=background:#8a2a1a onclick="setColor(this,'#8a2a1a')"></span>
+          <span class=color-dot style=background:#6a2a8a onclick="setColor(this,'#6a2a8a')"></span>
+          <span class=color-dot style=background:#1a4a4a onclick="setColor(this,'#1a4a4a')"></span>
+          <span class=color-dot style=background:#c8a24a onclick="setColor(this,'#c8a24a')"></span>
+          <label class=cover-upload title="上传图片">⇪<input type=file accept=image/* hidden onchange=onUpload(event)></label>
+        </div></div>
+        <div class=wc-body><h3>霓虹修道院<em>Neon</em></h3><div class=vis>2087 雨夜，霓虹之下记忆可被买卖，人与机械的边界正在消融。</div><div class=wc-meta><span>科技赛博</span><span>第一幕 · Tick 4</span></div></div>
+      </div>
+      <div class=world-card onclick=loadWorld('雾港')>
+        <div class=wc-cover><div class=cover-tools onclick="event.stopPropagation()">
+          <span class=color-dot style=background:#8a2a1a onclick="setColor(this,'#8a2a1a')"></span>
+          <span class=color-dot style=background:#6a2a8a onclick="setColor(this,'#6a2a8a')"></span>
+          <span class=color-dot style=background:#1a4a4a onclick="setColor(this,'#1a4a4a')"></span>
+          <span class=color-dot style=background:#c8a24a onclick="setColor(this,'#c8a24a')"></span>
+          <label class=cover-upload title="上传图片">⇪<input type=file accept=image/* hidden onchange=onUpload(event)></label>
+        </div></div>
+        <div class=wc-body><h3>雾港<em>Mistport</em></h3><div class=vis>永远笼罩海雾的港口，海面下有古老而不可名状之物在苏醒。</div><div class=wc-meta><span>克苏鲁</span><span>第二幕 · Tick 8</span></div></div>
+      </div>
+      <div class=world-card onclick=loadWorld('九霄')>
+        <div class=wc-cover><div class=cover-tools onclick="event.stopPropagation()">
+          <span class=color-dot style=background:#8a2a1a onclick="setColor(this,'#8a2a1a')"></span>
+          <span class=color-dot style=background:#6a2a8a onclick="setColor(this,'#6a2a8a')"></span>
+          <span class=color-dot style=background:#1a4a4a onclick="setColor(this,'#1a4a4a')"></span>
+          <span class=color-dot style=background:#c8a24a onclick="setColor(this,'#c8a24a')"></span>
+          <label class=cover-upload title="上传图片">⇪<input type=file accept=image/* hidden onchange=onUpload(event)></label>
+        </div></div>
+        <div class=wc-body><h3>九霄<em>Jiuxiao</em></h3><div class=vis>仙门三派争夺道统，天劫将至，正邪之分远比表面复杂。</div><div class=wc-meta><span>修仙玄幻</span><span>第四幕 · Tick 21</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class=view data-view=builder>
+  <div class=builder-wrap>
+    <aside class=builder-stages>
+      <div class=bs-title>世界构建 · 7 步</div>
+      <div class="stage-item current" data-stage=1 onclick=goStage(1)><div class=num>1</div><div class=txt><div class=n>愿景</div><div class=d>类型与基调</div></div><div class=stage-line></div></div>
+      <div class="stage-item" data-stage=2 onclick=goStage(2)><div class=num>2</div><div class=txt><div class=n>世界观</div><div class=d>时代与核心矛盾</div></div><div class=stage-line></div></div>
+      <div class="stage-item" data-stage=3 onclick=goStage(3)><div class=num>3</div><div class=txt><div class=n>规则</div><div class=d>世界法则</div></div><div class=stage-line></div></div>
+      <div class="stage-item" data-stage=4 onclick=goStage(4)><div class=num>4</div><div class=txt><div class=n>地点</div><div class=d>抽象地图</div></div><div class=stage-line></div></div>
+      <div class="stage-item" data-stage=5 onclick=goStage(5)><div class=num>5</div><div class=txt><div class=n>角色</div><div class=d>性格·目标·定义图</div></div><div class=stage-line></div></div>
+      <div class="stage-item" data-stage=6 onclick=goStage(6)><div class=num>6</div><div class=txt><div class=n>开场</div><div class=d>引爆事件</div></div><div class=stage-line></div></div>
+      <div class="stage-item" data-stage=7 onclick=goStage(7)><div class=num>7</div><div class=txt><div class=n>定稿</div><div class=d>健康检查·开拍</div></div></div>
+    </aside>
+    <div class=builder-main>
+      <div class="stage-panel active" data-stage=1>
+        <div class=bm-head><div class=bm-label>第 1 步 · 愿景</div><h2>讲一个怎样的 <em>故事</em>？</h2><div class=desc>先定下类型、基调与规模——这也决定世界的视觉风格基底。</div></div>
+        <div class=chat><div class="msg ai"><div class=who>世界构建助手</div>你想讲一个什么样的故事？奇幻、科幻、历史，还是完全架空？</div></div>
+        <div class=field-label>视觉风格基底</div>
+        <div class=chips><span class=chip>水彩</span><span class=chip>动漫</span><span class="chip selected">电影感写实</span><span class=chip>油画</span><span class=chip>低多边形</span></div>
+        <div class=builder-input><input placeholder="描述你的故事构想…"></div>
+        <div class=step-actions><button class="btn primary" onclick="nextStage(1)">完成，进入下一步 →</button></div>
+      </div>
+      <div class="stage-panel" data-stage=2>
+        <div class=bm-head><div class=bm-label>第 2 步 · 世界观</div><h2>世界 <em>从何而来</em>？</h2><div class=desc>时代、世界设定，以及最核心的矛盾。</div></div>
+        <div class=builder-input><input placeholder="描述这个世界的时代与核心矛盾…"></div>
+        <div class=step-actions><button class="btn primary" onclick="nextStage(2)">完成，进入下一步 →</button></div>
+      </div>
+      <div class="stage-panel" data-stage=3>
+        <div class=bm-head><div class=bm-label>第 3 步 · 规则</div><h2>世界 <em>遵循什么</em>？</h2><div class=desc>把模糊想法变成清晰、可执行的世界规则——它们会约束物理引擎与世界意识。</div></div>
+        <div class=builder-input><input placeholder="添加一条世界规则，回车确认…"></div>
+        <div class=step-actions><button class="btn primary" onclick="nextStage(3)">完成，进入下一步 →</button></div>
+      </div>
+      <div class="stage-panel" data-stage=4>
+        <div class=bm-head><div class=bm-label>第 4 步 · 地点</div><h2>发生在 <em>哪里</em>？</h2><div class=desc>关键地点，以及它们之间如何连通。角色将在这些地点间移动。</div></div>
+        <div class=builder-input><input placeholder="描述一个地点…"></div>
+        <div class=step-actions><button class="btn primary" onclick="nextStage(4)">完成，进入下一步 →</button></div>
+      </div>
+      <div class="stage-panel" data-stage=5>
+        <div class=bm-head><div class=bm-label>第 5 步 · 角色</div><h2>谁来 <em>登场</em>？</h2><div class=desc>为每个角色立传——性格、目标、关系。我会为每人绘制一张定义图，此后形象保持一致。记得在角色之间埋下张力。</div></div>
+        <div class=builder-input><input placeholder="描述一个角色：名字、性格、目标…"></div>
+        <div class=step-actions><button class="btn primary" onclick="nextStage(5)">完成，进入下一步 →</button></div>
+      </div>
+      <div class="stage-panel" data-stage=6>
+        <div class=bm-head><div class=bm-label>第 6 步 · 开场</div><h2>从哪个 <em>瞬间</em> 开始？</h2><div class=desc>初始态势，以及一个打破平衡的引爆事件——开拍时作为 Tick 0 注入。</div></div>
+        <div class=field-label>引爆事件</div>
+        <div class="summary-card accent"><p>描述故事开场的那个决定性瞬间——它将打破初始平衡，推动一切开始运转。</p></div>
+        <div class=builder-input><input placeholder="描述引爆事件…"></div>
+        <div class=step-actions><button class="btn primary" onclick="nextStage(6)">完成，进入下一步 →</button></div>
+      </div>
+      <div class="stage-panel" data-stage=7>
+        <div class=bm-head><div class=bm-label>第 7 步 · 定稿</div><h2>准备好 <em>开拍</em> 了吗？</h2><div class=desc>一致性健康检查。通过即可开拍，世界将带着你的设定自主演化。</div></div>
+        <ul class=health>
+          <li class=ok>✓ 世界规则无矛盾、可执行</li>
+          <li class=ok>✓ 角色目标可触发，张力充足</li>
+          <li class=ok>✓ 地点连通合理</li>
+          <li class=ok>✓ 视觉风格锚已确认</li>
+          <li class=ok>✓ 引爆事件已就绪</li>
+        </ul>
+        <button class="btn primary big" onclick="nav('stage')">开拍 ▸ 进入主舞台</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class=view data-view=worldview>
+  <div class=wv-book>
+    <div class=wv-head>
+      <div class=wv-title>艾尔德兰 <em>Eldran</em></div>
+      <div class="meters static">
+        <div class="meter live"><span class=live-dot></span>运行中</div>
+        <div class=meter><span class=m-k>紧张度</span><span class=m-bar><i style=width:78%></i></span><span class="m-v warn">高</span></div>
+        <div class=meter><span class=m-k>局势</span><span class="m-v warn">动荡</span></div>
+        <div class=meter><span class=m-k>魔法活跃</span><span class=m-bar><i style=width:22%></i></span><span class=m-v>衰退</span></div>
+        <div class=meter><span class=m-k>环境</span><span class=m-v>暴雪夜</span></div>
+        <div class="meter stats"><span><b>12</b> tick</span><span><b>47</b> 事件</span><span><b>3</b> 幕</span></div>
+      </div>
+    </div>
+    <div class=wv-body>
+      <div class=wv-toc></div>
+      <div class=wv-content></div>
+    </div>
+  </div>
+</section>
+
+<section class=view data-view=workbench>
+  <div class=wb>
+    <div class="wb-panel wb-char">
+      <div class=ph>登场 · 3</div>
+      <div class="cb-chip present" onclick=showChar('艾伦')><div class="portrait p1">艾</div><div>艾伦<div class=cb-mini>流亡骑士 · 怒</div></div></div>
+      <div class="cb-chip present" onclick=showChar('贝拉')><div class="portrait p2">贝</div><div>贝拉<div class=cb-mini>老板娘 · 惧</div></div></div>
+      <div class="cb-chip absent" onclick=showChar('凯尔')><div class="portrait p3">凯</div><div>凯尔<div class=cb-mini>谋士 · 谋士塔</div></div></div>
+    </div>
+    <div class="wb-panel wb-center">
+      <div class=ph>背叛之夜 <span class=ph-sub>第三幕 · Tick 12 · 断刃酒馆 · 夜</span></div>
+      <p class=synopsis>流亡三年的骑士艾伦重返寒鸦镇寻仇，逐步发现背叛背后是宫廷谋士凯尔的暗中操纵。今夜暴雪，他在「断刃」酒馆与旧爱贝拉对峙——凯尔的棋局，才刚揭开一角。</p>
+      <div class="beat current">
+        <div class=beat-label><span class=beat-dot></span><span class=beat-meta><b>Tick 12</b> · 对峙 · 酒馆 · 夜</span></div>
+        <p class=prose>木门被猛地推开，寒风卷着雪花涌入。艾伦立在门口，手按剑柄——那柄剑正是贝拉三年前亲手打造。三年的流亡与疑问，在这一刻凝结成冰冷的锋刃。</p>
+        <div class="event dialogue"><div class=tag>对白</div><div class=body><span class=speaker>艾伦</span>：「你骗了我，贝拉。从始至终。」</div></div>
+        <div class="event conflict"><div class=tag>冲突</div><div class=body>艾伦拔剑。贝拉后退，撞翻桌椅。王城谋士塔，凯尔放下棋子，微微一笑。</div></div>
+      </div>
+      <div class="beat past">
+        <div class=beat-label><span class=beat-dot></span><span class=beat-meta><b>Tick 8</b> · 断刃酒馆</span></div>
+        <p class=prose>贝拉把第三杯酒推到艾伦面前，长久沉默后她开了口——但说出的只是半个真相。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class=view data-view=chronicle>
+  <div class=chr>
+    <div class=chr-head>
+      <div class=chr-title>时间事件</div>
+      <div class=chr-sub>艾尔德兰 · 拖动播放头跳转 · 点击看详情</div>
+      <div class=chr-cur id=chrCur>当前 · Tick 12 · 冬月十四</div>
+    </div>
+    <div class=chr-tl>
+      <div class=tl-bar>
+        <div class=tl-ruler><span class=tl-rname></span><span>T0</span><span>T3</span><span>T6</span><span>T9</span><span>T12</span><span>T15</span></div>
+        <div class=tl-row><span class=tl-name>幕</span><div class=tl-lane><div class="tl-clip act" style="left:0;width:22%">第一幕·归来</div><div class="tl-clip act" style="left:22%;width:45%">第二幕·追查</div><div class="tl-clip act now" style="left:67%;width:33%">第三幕·背叛之夜</div></div></div>
+        <div class=tl-row><span class=tl-name>艾伦</span><div class=tl-lane><div class="tl-clip evt" style="left:1%" onclick=showEvt('Tick 0','引爆','艾伦归来','暴雪初歇的清晨，流亡三年的艾伦披风结霜，出现在寒鸦镇门外。守城老兵认出他的剑，沉默开城——这座即将动荡的小镇，再也回不去了。')>归来</div><div class="tl-clip evt" style="left:30%" onclick=showEvt('Tick 4','转折','密信现世','艾伦在旧营地灰烬中翻出未烧尽的密信，火漆纹章属宫廷谋士凯尔。三年前的背叛，原来从一开始就不是贝拉一人之错。')>密信</div><div class="tl-clip evt now" style="left:67%" onclick=showEvt('Tick 12','高潮','酒馆拔剑','暴雪夜，艾伦推开「断刃」酒馆的门，剑指贝拉。三年流亡的疑问凝结成寒光，陶罐碎裂声里，凯尔的棋局正按设计展开。')>对峙</div></div></div>
+        <div class=tl-row><span class=tl-name>贝拉</span><div class=tl-lane><div class="tl-clip" style="left:55%;width:12%" onclick=showEvt('Tick 8','升级','半个真相','贝拉把第三杯酒推到艾伦面前，长久沉默后开口——却只说出半个真相。她在守护一个更深的秘密，关于凯尔，也关于她自己。')>半真</div><div class="tl-clip evt" style="left:70%" onclick=showEvt('Tick 12','冲突','后退防御','艾伦拔剑的瞬间，贝拉撞翻桌椅后退，陶罐碎地。她眼里不止恐惧，还有一丝被读懂的慌乱。')>后退</div></div></div>
+        <div class=tl-row><span class=tl-name>凯尔</span><div class=tl-lane><div class="tl-clip" style="left:5%;width:16%" onclick=showEvt('三年前','布局','寂灭之局','凯尔在王城布下寂灭之局，利用贝拉的软肋令她背叛艾伦，借此清除异己、巩固权势。三年后，棋子仍在盘上。')>设局</div><div class="tl-clip" style="left:70%;width:12%" onclick=showEvt('Tick 12','旁观','谋士之笑','百里之外的谋士塔，烛火摇曳。凯尔放下手中棋子，微微一笑——棋局正按他设计的那样展开。')>旁观</div></div></div>
+        <div class=tl-row><span class=tl-name>关键</span><div class=tl-lane><div class="tl-evt" style="left:2%" onclick=showEvt('Tick 0','引爆','艾伦归来','故事的开端：流亡者归来，寒鸦镇命运转动。')>●引爆</div><div class="tl-evt" style="left:33%" onclick=showEvt('Tick 4','转折','密信现世','真相浮出水面，敌友重新划定。')>●转折</div><div class="tl-evt" style="left:56%" onclick=showEvt('Tick 8','升级','贝拉半真','冲突深化，秘密压向临界。')>●升级</div><div class="tl-evt now" style="left:69%" onclick=showEvt('Tick 12','高潮','酒馆拔剑','第三幕高潮：背叛之夜，剑拔弩张。')>●高潮</div></div></div>
+        <div class=tl-playhead id=playhead style="left:calc(60px + (100% - 64px) * 0.69)"></div>
+      </div>
+    </div>
+    <div class=chr-stream>
+      <div class=tl-act><div class=tl-act-h>第一幕 · 归来</div></div>
+      <div class=chr-evt onclick=showEvt('Tick 0','引爆','艾伦归来','暴雪初歇的清晨，流亡三年的艾伦披风结霜，出现在寒鸦镇门外。守城老兵认出他的剑，沉默开城。')><span class=chr-t>Tick 0</span><span class=chr-type>引爆</span><span class=chr-name>艾伦归来</span></div>
+      <div class=chr-evt onclick=showEvt('Tick 2','行动','入城认剑','艾伦穿过空无一人的早市，马蹄踏碎薄冰，径直走向镇外那片被烧毁的旧营地。')><span class=chr-t>Tick 2</span><span class=chr-type>行动</span><span class=chr-name>入城认剑</span></div>
+      <div class=tl-act><div class=tl-act-h>第二幕 · 追查</div></div>
+      <div class=chr-evt onclick=showEvt('Tick 4','转折','密信现世','艾伦在旧营地灰烬中翻出未烧尽的密信，火漆纹章属宫廷谋士凯尔。')><span class=chr-t>Tick 4</span><span class=chr-type>转折</span><span class=chr-name>密信现世</span></div>
+      <div class=chr-evt onclick=showEvt('Tick 6','对话','暗中打探','艾伦在酒馆旁敲侧击，打探贝拉这些年的变化与寒鸦镇的暗流。')><span class=chr-t>Tick 6</span><span class=chr-type>对话</span><span class=chr-name>暗中打探</span></div>
+      <div class=chr-evt onclick=showEvt('Tick 8','升级','半个真相','贝拉只说出半个真相，守护更深的秘密。')><span class=chr-t>Tick 8</span><span class=chr-type>升级</span><span class=chr-name>半个真相</span></div>
+      <div class=tl-act><div class=tl-act-h>第三幕 · 背叛之夜</div></div>
+      <div class=chr-evt onclick=showEvt('Tick 10','环境','暴雪封镇','暴雪封镇，酒馆成为孤岛，所有人在此交汇。')><span class=chr-t>Tick 10</span><span class=chr-type>环境</span><span class=chr-name>暴雪封镇</span></div>
+      <div class="chr-evt now" onclick=showEvt('Tick 12','高潮','酒馆拔剑','艾伦剑指贝拉，陶罐碎裂，凯尔的棋局展开。')><span class=chr-t>Tick 12</span><span class=chr-type>高潮</span><span class=chr-name>酒馆拔剑 · 当前</span></div>
+    </div>
+  </div>
+</section>
+
+<section class=view data-view=cast>
+  <div class=cast-grid>
+    <div class=cast-left>
+      <div class=ph>角色 · 3</div>
+      <div class=char-cards>
+        <div class=char-big><div class="cb-portrait p1">艾</div><div class=cb-body><div class=n>艾伦</div><div class=r>流亡骑士 · 35</div><div class=goal><b>目标</b>：揭露背叛，复仇雪耻</div><div class=tags><span class=tag>固执</span><span class=tag>重情</span><span class=tag>剑术</span></div></div></div>
+        <div class=char-big><div class="cb-portrait p2">贝</div><div class=cb-body><div class=n>贝拉</div><div class=r>酒馆老板娘 · 28</div><div class=goal><b>目标</b>：守护秘密，活下去</div><div class=tags><span class=tag>机敏</span><span class=tag>隐忍</span><span class=tag>人脉</span></div></div></div>
+        <div class=char-big><div class="cb-portrait p3">凯</div><div class=cb-body><div class=n>凯尔</div><div class=r>宫廷谋士 · 50</div><div class=goal><b>目标</b>：让王国在内乱中重建秩序</div><div class=tags><span class=tag>冷酷</span><span class=tag>野心</span><span class=tag>权术</span></div></div></div>
+      </div>
+      <div class=ph style="margin-top:18px">艾伦 · 内心档案</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div><div class=field-label style="margin:0 0 6px">近期记忆</div><ul class=suspense-mini><li><b>·</b> 贝拉三年前为他锻剑</li><li><b>·</b> 密信火漆属凯尔</li><li><b>·</b> 贝拉眼神在隐瞒</li></ul></div>
+        <div><div class=field-label style="margin:0 0 6px">计划与执念</div><ul class=elsewhere-mini><li><b>短期</b>逼出全部真相</li><li><b>中期</b>找凯尔对质</li><li><b>执念</b>「她必须给我答案。」</li></ul></div>
+      </div>
+    </div>
+    <div class=cast-right>
+      <div class=ph>关系图谱 <span class=ph-sub>实线明面 · 虚线暗中</span></div>
+      <div class=relation-map>
+        <svg viewBox="0 0 800 280" style="width:100%;height:250px">
+          <line x1=160 y1=140 x2=400 y2=140 stroke=#e8746a stroke-width=2.5/>
+          <text x=280 y=128 fill=#e8746a text-anchor=middle font-size=13 font-weight=500>敌对 · −20</text>
+          <line x1=400 y1=140 x2=640 y2=140 stroke=#8a8e9e stroke-width=2 stroke-dasharray="6 4"/>
+          <text x=520 y=128 fill=#a8b0c4 text-anchor=middle font-size=13>利用 · 5</text>
+          <path d="M 160 140 Q 400 35 640 140" fill=none stroke=#8a8e9e stroke-width=2 stroke-dasharray="6 4"/>
+          <text x=400 y=50 fill=#a8b0c4 text-anchor=middle font-size=13>幕后操纵</text>
+          <circle cx=160 cy=140 r=44 fill=#1a2238 stroke=#4a5470 stroke-width=1.5/>
+          <text x=160 y=149 fill=#c8d4f0 text-anchor=middle font-size=22 font-family="Instrument Serif" font-style=italic>艾</text>
+          <text x=160 y=205 fill=#e9ecf5 text-anchor=middle font-size=13 font-weight=600>艾伦</text>
+          <circle cx=400 cy=140 r=44 fill=#381a2a stroke=#6a3a52 stroke-width=1.5/>
+          <text x=400 y=149 fill=#f0c8e0 text-anchor=middle font-size=22 font-family="Instrument Serif" font-style=italic>贝</text>
+          <text x=400 y=205 fill=#e9ecf5 text-anchor=middle font-size=13 font-weight=600>贝拉</text>
+          <circle cx=640 cy=140 r=44 fill=#1a2818 stroke=#4a6a4a stroke-width=1.5/>
+          <text x=640 y=149 fill=#c8f0c8 text-anchor=middle font-size=22 font-family="Instrument Serif" font-style=italic>凯</text>
+          <text x=640 y=205 fill=#e9ecf5 text-anchor=middle font-size=13 font-weight=600>凯尔</text>
+        </svg>
+      </div>
+      <div class=ws-grid style="margin-top:18px">
+        <div class=ws-card><h3>阵营势力</h3><ul class=rule-list-mini><li>🛡 王室旧臣（凯尔）</li><li>⚔ 流亡者（艾伦）</li><li>🍷 寒鸦镇平民（贝拉）</li><li>🔮 暗中势力（？）</li></ul></div>
+        <div class=ws-card><h3>关系演化</h3><ul class=elsewhere-mini><li><b>T0</b> 艾伦→贝拉 +40</li><li><b>T4</b> 艾伦→凯尔 −30</li><li><b>T12</b> 艾伦→贝拉 −20</li></ul></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class=view data-view=story>
+  <div class=story-wrap>
+    <div class=story-head>
+      <div class=sh-label>艾尔德兰 · 第三幕进行中</div>
+      <h2>背叛之夜</h2>
+      <div class=sh-meta>已生成 3 章 · 12 tick · 约 4,800 字</div>
+    </div>
+    <article class=chapter>
+      <div class=chap-no>第 一 章</div>
+      <h3 class=chap-title>归 来</h3>
+      <p>暴雪初歇的清晨，一个披风结霜的旅人出现在寒鸦镇门外。守城的老兵眯起眼，认出了他手中那柄剑——三年了，整个寒鸦镇都以为艾伦死在了北境。老兵什么也没问，沉默地为这座即将动荡的小镇打开了门。</p>
+      <p>艾伦穿过空无一人的早市，马蹄踏碎薄冰。他没有去旧宅，而是径直走向镇外那片被烧毁的旧营地。那里埋着他三年前的全部人生，也埋着他要找的答案。</p>
+    </article>
+    <article class=chapter>
+      <div class=chap-no>第 二 章</div>
+      <h3 class=chap-title>追 查</h3>
+      <p>灰烬之下，一封未烧尽的密信重见天日。火漆上的纹章已被熏黑，但艾伦还是认出了它——那是宫廷谋士凯尔的私印。他攥紧信纸，指节发白。三年前的背叛，原来从一开始就不是贝拉一个人的错。</p>
+      <p>夜幕降临时，他推开了「断刃」酒馆的门。贝拉站在柜台后，手里擦着的杯子停在半空。三年，足够让一个人改变许多，但她眼里的慌乱，他看得一清二楚。她端来三杯酒，却只说出了半个真相——关于凯尔，也关于她自己。</p>
+    </article>
+    <article class=chapter>
+      <div class=chap-no>第 三 章 · 进行中</div>
+      <h3 class=chap-title>背叛之夜</h3>
+      <p>暴雪封镇。酒馆成了孤岛，炉火噼啪作响。木门被猛地推开时，所有人都回过了头——艾伦立在门口，披风结霜，手按在贝拉三年前亲手为他锻造的那柄剑上。</p>
+      <p>「你骗了我，贝拉。从始至终。」</p>
+      <p>剑出鞘的寒光里，贝拉后退，撞翻了身后的桌椅，陶罐碎裂一地。而在百里之外的王城，谋士塔的烛火摇曳，凯尔放下手中的棋子，微微一笑——棋局，正按他设计的那样展开。</p>
+      <p class=wip>▍ 故事仍在自行生长……</p>
+    </article>
+  </div>
+</section>
+
+
+</main>
+
+<div class=backdrop id=backdrop></div>
+<aside class=director-panel id=dp>
+  <div class=dp-head><h2>导演介入</h2><button class=dp-close onclick=closeDirector()>×</button></div>
+  <div class=dp-sub>世界将在下一 tick 接受你的意志。软介入尊重角色自主，硬介入确定生效。</div>
+  <div class="intervene-type selected" onclick=pick(this)><span class="it-soft green">软</span><div class=it-text><div class=t>注入事件</div><div class=d>暴风雨、陌生人到来…</div></div></div>
+  <div class="intervene-type" onclick=pick(this)><span class="it-soft green">软</span><div class=it-text><div class=t>改角色目标</div><div class=d>赋予某人新的动机</div></div></div>
+  <div class="intervene-type" onclick=pick(this)><span class="it-soft amber">硬</span><div class=it-text><div class=t>改世界规则</div><div class=d>战争爆发、魔法失效…</div></div></div>
+  <div class="intervene-type" onclick=pick(this)><span class="it-soft red">硬</span><div class=it-text><div class=t>强制行动</div><div class=d>令某角色做出指定行为</div></div></div>
+  <textarea class=dp-textarea placeholder="描述你的介入… 例如：一名披斗篷的旅人此刻推门而入，目光锁定艾伦。"></textarea>
+  <button class=dp-submit>提交 · 下个 tick 生效</button>
+</aside>
+
+<div class=evt-card id=evtCard>
+  <div class=ec-head><span class=ec-tick id=ecTick></span><span class=ec-type id=ecType></span><button class=ec-close onclick=closeEvt()>×</button></div>
+  <h3 id=ecTitle></h3>
+  <div id=ecBody></div>
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('cosmos-canvas');if(!cv)return;
+  var ctx=cv.getContext('2d'),W=0,H=0,lines=[],stars=[];
+  function rnd(a,b){return a+Math.random()*(b-a)}
+  function build(){
+    lines=[];
+    var avgH=H/72,avgV=W/72;
+    var y=rnd(avgH*0.3,avgH*0.8);
+    while(y<H){lines.push({t:0,p:y,w:rnd(.7,1.6)});y+=rnd(avgH*0.4,avgH*1.7);}
+    var x=rnd(avgV*0.3,avgV*0.8);
+    while(x<W){lines.push({t:1,p:x,w:rnd(.7,1.6)});x+=rnd(avgV*0.4,avgV*1.7);}
+    stars=[];
+    for(var i=0;i<90;i++)stars.push({x:rnd(0,W),y:rnd(0,H),r:rnd(.3,1.3),o:rnd(.2,.6),ph:rnd(0,6.283),sp:rnd(.6,2.2)});
+  }
+  function resize(){W=cv.width=innerWidth;H=cv.height=innerHeight;build();}
+  var t=0;
+  function frame(){
+    if(cv.offsetParent===null){requestAnimationFrame(frame);return}
+    t+=.016;ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle='#ffffff';ctx.lineCap='round';ctx.shadowColor='rgba(255,255,255,.9)';
+    var Hr=H+300,Vr=W+300;
+    var bh1=((t*52)%Hr)-150;
+    var bh2=((t*38+Hr*0.5)%Hr)-150;
+    var bv1=((t*46)%Vr)-150;
+    var bv2=((t*33+Vr*0.4)%Vr)-150;
+    var D=24200;
+    for(var i=0;i<lines.length;i++){
+      var l=lines[i],c;
+      if(l.t===0){var d1=l.p-bh1,d2=l.p-bh2;c=Math.exp(-d1*d1/D)+Math.exp(-d2*d2/D);}
+      else{var e1=l.p-bv1,e2=l.p-bv2;c=Math.exp(-e1*e1/D)+Math.exp(-e2*e2/D);}
+      var o=0.16+0.34*c;if(o>.85)o=.85;
+      ctx.globalAlpha=o;ctx.lineWidth=l.w;ctx.shadowBlur=3+o*9;
+      ctx.beginPath();
+      if(l.t===0){ctx.moveTo(0,l.p);ctx.lineTo(W,l.p)}else{ctx.moveTo(l.p,0);ctx.lineTo(l.p,H)}
+      ctx.stroke();
+    }
+    ctx.shadowBlur=0;ctx.fillStyle='#ffffff';
+    for(var j=0;j<stars.length;j++){var s2=stars[j];ctx.globalAlpha=s2.o*(.4+.6*Math.sin(t*s2.sp+s2.ph));ctx.beginPath();ctx.arc(s2.x,s2.y,s2.r,0,6.283);ctx.fill()}
+    ctx.globalAlpha=1;requestAnimationFrame(frame);
+  }
+  addEventListener('resize',resize);resize();frame();
+})();
+function nav(v){
+  document.body.dataset.mode=(v==='home'||v==='builder')?v:'world';
+  document.body.dataset.view=v;
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.dataset.view===v));
+  document.querySelectorAll('.wnav').forEach(a=>a.classList.toggle('active',a.dataset.w===v));
+  if(v==='builder') resetBuilder();
+  window.scrollTo(0,0); closeDirector();
+}
+function resetBuilder(){document.querySelectorAll('.stage-item').forEach(s=>s.classList.remove('done'));goStage(1)}
+function goStage(n){
+  document.querySelectorAll('.stage-panel').forEach(p=>p.classList.toggle('active',p.dataset.stage==n));
+  document.querySelectorAll('.stage-item').forEach(s=>s.classList.toggle('current',s.dataset.stage==n));
+  var names={1:'愿景',2:'世界观',3:'规则',4:'地点',5:'角色',6:'开场',7:'定稿'};
+  var bp=document.getElementById('bp');
+  if(bp) bp.innerHTML='新世界 · <b>第 '+n+' / 7 步 · '+names[n]+'</b>';
+}
+function nextStage(n){var it=document.querySelector('.stage-item[data-stage="'+n+'"]');if(it)it.classList.add('done');if(n<7)goStage(n+1)}
+function setColor(dot,color){dot.closest('.wc-cover').style.background=color}
+function onUpload(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(ev){e.target.closest('.wc-cover').style.background="url('"+ev.target.result+"') center/cover"};r.readAsDataURL(f)}
+function openDirector(){document.getElementById('dp').classList.add('open');document.getElementById('backdrop').classList.add('show')}
+function closeDirector(){document.getElementById('dp').classList.remove('open');document.getElementById('backdrop').classList.remove('show')}
+function toggleChar(el){el.classList.toggle('open')}
+var CHARS={
+ '艾伦':{role:'流亡骑士',mood:'怒',bars:[['怒火',85,'#e8746a'],['体力',55,''],['理智',38,'#dcb15a']],goal:'揭露背叛 · 进行中',doing:'质问贝拉',thought:'「她必须给我一个答案。」'},
+ '贝拉':{role:'酒馆老板娘',mood:'惧',bars:[['恐惧',72,'#e8746a'],['镇定',42,'']],goal:'守护秘密 · 危急',doing:'后退防御',thought:'「绝不能让他知道凯尔……」'},
+ '凯尔':{role:'宫廷谋士',mood:'王城·谋士塔',bars:[['冷酷',88,'#e8746a'],['耐心',70,'']],goal:'让王国在内乱中重建秩序',doing:'等待消息',thought:'「棋子已落，且看今夜。」'}
+};
+function showChar(name){
+  var c=CHARS[name];if(!c)return;
+  document.getElementById('ecTick').textContent='角色';
+  document.getElementById('ecType').textContent=c.role+' · '+c.mood;
+  document.getElementById('ecTitle').textContent=name;
+  var h='';
+  if(c.bars&&c.bars.length){h+='<div style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px">';c.bars.forEach(function(b){h+='<div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#a8b0c4"><span style="width:38px">'+b[0]+'</span><span style="flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.075);overflow:hidden"><span style="display:block;height:100%;width:'+b[1]+'%;background:'+(b[2]||'#c8ccd6')+';border-radius:3px"></span></span></div>'});h+='</div>';}
+  h+='<div style="font-size:13px;color:#a8b0c4;margin-bottom:6px">目标 · '+c.goal+'</div>';
+  h+='<div style="font-size:13px;color:#a8b0c4;margin-bottom:12px">正在 · '+c.doing+'</div>';
+  h+='<div style="font-size:13px;color:#6e768e;font-style:italic;padding:9px 12px;background:rgba(8,11,20,.4);border-left:2px solid #c8ccd6;border-radius:0 5px 5px 0;line-height:1.6">'+c.thought+'</div>';
+  document.getElementById('ecBody').innerHTML=h;
+  document.getElementById('evtCard').classList.add('open');
+}
+function showEvt(tick,type,title,body){var c=document.getElementById('evtCard');document.getElementById('ecTick').textContent=tick;document.getElementById('ecType').textContent=type;document.getElementById('ecTitle').textContent=title;document.getElementById('ecBody').textContent=body;c.classList.add('open')}
+function closeEvt(){document.getElementById('evtCard').classList.remove('open')}
+(function(){
+var FUTURE=[{t:13,m:'酒馆',p:'风雪更紧，炉火将熄。艾伦的剑尖离贝拉只有一寸，空气凝固。',e:null},{t:14,m:'对白',p:'贝拉颤声开口，三年的秘密终于决堤。',e:{k:'dialogue',tag:'对白',body:'贝拉：「凯尔……他拿我的孩子威胁了我三年。」'}},{t:15,m:'转折',p:'酒馆后门被推开，一名披斗篷的信使持剑而入，寒气随之涌入。',e:{k:'conflict',tag:'冲突',body:'信使：「谋士大人有请艾伦阁下，明日王城一叙。」'}},{t:16,m:'收剑',p:'艾伦缓缓收剑，雪夜归寂。这一夜没有流血，但所有人都知道——真正的棋局，明日才开场。',e:null}];
+var curTick=12,playing=false,simTimer=null,fi=0;
+var ph=document.getElementById('playhead'),bar=document.querySelector('.tl-bar'),pb=document.getElementById('playBtn'),ci=document.querySelector('.clock-info');
+function setTick(tk){curTick=tk;if(ci)ci.textContent='第三幕 · Tick '+tk+' · 冬月十四';var cc=document.getElementById('chrCur');if(cc)cc.textContent='当前 · Tick '+tk+' · 冬月十四';if(bar&&ph){var lane=bar.getBoundingClientRect().width-64;var x=tk/18;x=x<0?0:x>1?1:x;ph.style.left=(60+x*lane)+'px'}}
+function step(){if(fi>=FUTURE.length){stopSim();return}var f=FUTURE[fi++];var n=document.querySelector('.wb-center');if(!n)return;var b=document.createElement('div');b.className='beat';b.innerHTML='<div class=beat-label><span class=beat-dot></span><span class=beat-meta><b>Tick '+f.t+'</b> · '+f.m+'</span></div><p class=prose>'+f.p+'</p>'+(f.e?'<div class="event '+f.e.k+'"><div class=tag>'+f.e.tag+'</div><div class=body>'+f.e.body+'</div></div>':'');n.appendChild(b);b.scrollIntoView({behavior:'smooth',block:'end'});setTick(f.t)}
+function startSim(){playing=true;if(pb)pb.textContent='⏸';simTimer=setInterval(step,2600)}
+function stopSim(){playing=false;if(pb)pb.textContent='▶';if(simTimer)clearInterval(simTimer)}
+if(pb)pb.addEventListener('click',function(){playing?stopSim():startSim()});
+if(ph){var drag=false;ph.addEventListener('mousedown',function(e){drag=true;e.preventDefault()});document.addEventListener('mousemove',function(e){if(!drag||!bar)return;var r=bar.getBoundingClientRect();var lane=r.width-64;var x=(e.clientX-r.left-60)/lane;x=x<0?0:x>1?1:x;setTick(Math.round(x*18))});document.addEventListener('mouseup',function(){drag=false})}
+var sc=document.querySelector('.chr-tl');
+if(sc){var sd=false,sx,sl;sc.addEventListener('mousedown',function(e){if(e.target.closest('.tl-clip,.tl-evt,.tl-playhead'))return;sd=true;sx=e.clientX;sl=sc.scrollLeft;sc.style.cursor='grabbing'});document.addEventListener('mousemove',function(e){if(!sd)return;sc.scrollLeft=sl-(e.clientX-sx)});document.addEventListener('mouseup',function(){sd=false;sc.style.cursor='grab'})}
+})();
+document.getElementById('backdrop').addEventListener('click',closeDirector);
+function pick(el){document.querySelectorAll('.intervene-type').forEach(e=>e.classList.remove('selected'));el.classList.add('selected')}
+var WORLDS={
+'艾尔德兰':{en:'Eldran',glyph:'艾',p:'p1',meters:{tens:78,sit:'动荡',mag:22,magK:'魔法活跃',magV:'衰退',env:'暴雪夜',tick:12,evt:47,act:3,actName:'第三幕·背叛之夜',actN:3},
+syn:'流亡三年的骑士艾伦重返寒鸦镇寻仇，逐步发现背叛背后是宫廷谋士凯尔的暗中操纵。今夜暴雪，他在「断刃」酒馆与旧爱贝拉对峙——凯尔的棋局，才刚揭开一角。',
+dims:[[['世界观背景','p','曾是魔法鼎盛的王国，三年前寂灭之乱后魔法急剧衰退，旧贵族死守权力，流亡者集结边境。'],['力量体系','l',['来源:星辰','等级:唤星者','代价:生命/记忆','星辰黯淡']],[ '天文宇宙','l',['双月:银/血','血月=灾兆','星辰=魔力源']]],
+[['历史脉络','p','黄金时代→寂灭之乱→衰退→流亡者归来→背叛之夜'],['政治格局','l',['王权衰落','凯尔操盘','领主割据']],[ '规则边界','l',['不可复活死者','违誓遭天谴','不可逆时间']]],
+[['宗教信仰','l',['旧神(织星者)式微','教会掌残存魔法','末日预言']],[ '主要势力','l',['🛡王室旧臣','⚔流亡者','🔮教会']],[ '种族','l',['人类','北境人','旧族(魔法天赋)']]],
+[['重要人物','l',['老国王','凯尔·谋士','大主教','北境将军']],[ '世界规则','l',['魔法付代价','誓言有约束','冬夜不收外乡人']],[ '当前局势','p','第三幕高潮，各方交汇寒鸦镇，背叛之夜后真正的博弈才开始']]],
+chars:[{n:'艾伦',r:'流亡骑士·怒',g:'艾',p:'p1',pr:true,b:[['怒火',85,'#e8746a'],['体力',55,''],['理智',38,'#dcb15a']],go:'揭露背叛·进行中',d:'质问贝拉',t:'「她必须给我一个答案。」'},{n:'贝拉',r:'老板娘·惧',g:'贝',p:'p2',pr:true,b:[['恐惧',72,'#e8746a'],['镇定',42,'']],go:'守护秘密·危急',d:'后退防御',t:'「绝不能让他知道凯尔……」'},{n:'凯尔',r:'谋士·谋士塔',g:'凯',p:'p3',pr:false,b:[['冷酷',88,'#e8746a'],['耐心',70,'']],go:'王国重建秩序',d:'等待消息',t:'「棋子已落，且看今夜。」'}],
+beats:[{t:'Tick 12',m:'对峙·酒馆·夜',p:'木门被推开，艾伦手按剑柄——那柄剑正是贝拉三年前亲手打造。三年流亡凝结成寒光。',e:{k:'conflict',tag:'冲突',b:'艾伦拔剑。贝拉后退撞翻桌椅。王城谋士塔，凯尔放下棋子微笑。'}},{t:'Tick 8',m:'断刃酒馆',p:'贝拉把第三杯酒推到艾伦面前，长久沉默后开口——只说出半个真相。',e:null}],
+chron:[{t:'Tick 0',y:'引爆',n:'艾伦归来',d:'暴雪清晨，流亡三年的艾伦重返寒鸦镇。'},{t:'Tick 4',y:'转折',n:'密信现世',d:'旧营地灰烬翻出密信，火漆属凯尔。'},{t:'Tick 8',y:'升级',n:'半个真相',d:'贝拉只说半个真相，守护更深的秘密。'},{t:'Tick 12',y:'高潮',n:'酒馆拔剑',d:'艾伦剑指贝拉，陶罐碎裂，凯尔棋局展开。'}],
+story:{meta:'已生成3章·12tick·约4800字',ch:[{no:'第一章·归来',p:['暴雪初歇的清晨，披风结霜的旅人出现在寒鸦镇门外。守城老兵认出他的剑，沉默开城。','艾伦穿过空无一人的早市，径直走向镇外被烧毁的旧营地。那里埋着他三年前的全部人生。']},{no:'第二章·追查',p:['灰烬之下，一封未烧尽的密信重见天日。火漆纹章属宫廷谋士凯尔——三年前的背叛，从来不是贝拉一人之错。','夜幕降临，他推开「断刃」酒馆的门。贝拉端来三杯酒，却只说出半个真相。']}]}},
+
+'长安夜雨':{en:"Chang'an",glyph:'长',p:'p1',meters:{tens:72,sit:'危如累卵',mag:0,magK:'天象',magV:'荧惑守心',env:'秋雨夜',tick:9,evt:38,act:2,actName:'天宝末·暗杀之夜',actN:2},
+syn:'天宝末年，盛唐繁华表象下暗流涌动。安禄山拥兵自重，朝堂权臣倾轧。一夜秋雨，宰相府暗杀案将牵出王朝崩塌的引线——每个人都在选边。',
+dims:[[['世界观背景','p','盛唐将倾，开元余晖散尽。安禄山在河北拥兵，杨国忠把持朝纲，太子暗中筹谋，诗人在酒肆写绝命诗。'],['力量体系','l',['权谋与武力(无超常)','来源:权位/兵权','代价:身家性命','边界:人力之限']],[ '谶纬','l',['天象谶语','荧惑守心=兵兆','应验系于人']]],
+[['历史脉络','p','贞观→开元盛世→天宝危机(当下)→安史之乱(将至)'],['政治格局','l',['玄宗倦政','杨党/太子党/安镇三派','地方离心']],[ '规则边界','l',['皇命不可违(但人人算计)','江湖道义','夜不入坊墙外']]],
+[['信仰文化','l',['佛道并盛·宫廷崇道','诗歌鼎盛(李杜)','胡风盛行']],[ '主要势力','l',['🛡杨党(权相)','⚔安镇(枭雄)','📜太子党']],[ '民族','l',['汉人','胡人(突厥/粟特)','胡汉融合']]],
+[['重要人物','l',['玄宗(倦政)','杨国忠(权相)','安禄山(枭雄)','太子(隐忍)']],[ '组织','l',['不良人(皇家暗探)','神策军雏形','江湖门派','胡商行会']],[ '当前局势','p','秋雨夜宰相府暗杀案，证据指向三方。安禄山起兵在即，长安最后的繁华里人人选边。']]],
+chars:[{n:'李墨',r:'不良人·冷',g:'李',p:'p1',pr:true,b:[['警觉',80,'#e8746a'],['忠诚',60,''],['疑虑',70,'#dcb15a']],go:'查清暗杀主使·进行中',d:'勘查宰相府',t:'「这案子，查下去就是个死。可不放，也是死。」'},{n:'沈怜',r:'酒肆歌伎·秘',g:'沈',p:'p2',pr:true,b:[['恐惧',68,'#e8746a'],['机敏',75,'']],go:'护住太子密信·危急',d:'藏匿证据',t:'「那封信若被搜出，东宫上下二百口……」'},{n:'安禄山',r:'范阳节度使·不在场',g:'安',p:'p3',pr:false,b:[['野心',95,'#e8746a'],['隐忍',82,'']],go:'起兵夺天下',d:'河北点兵',t:'「这长安的雨，下不了几场了。」'}],
+beats:[{t:'Tick 9',m:'暗杀·宰相府·秋雨夜',p:'雨打芭蕉。李墨蹲在宰相尸体旁，死者手中攥着一缕胡风衣角——指向三方势力的任何一家都可能是局。',e:{k:'conflict',tag:'冲突',b:'杨党说是太子党灭口，太子党说是安镇栽赃。真相，藏在平康坊一间酒肆里。'}},{t:'Tick 6',m:'平康坊酒肆',p:'沈怜把一盏残酒推给李墨，袖中藏着那封不该存在的信。她笑得风轻云淡，眼里却是惊雷。',e:null}],
+chron:[{t:'Tick 0',y:'引爆',n:'宰相遇刺',d:'秋雨夜，宰相死于府中，线索指向三方。'},{t:'Tick 3',y:'转折',n:'胡风衣角',d:'死者手中衣角，牵出胡人势力。'},{t:'Tick 6',y:'升级',n:'酒肆藏信',d:'沈怜袖中太子密信，东宫命悬一线。'},{t:'Tick 9',y:'高潮',n:'三方对峙',d:'杨党、太子、安镇互相倾轧，真相在酒肆。'}],
+story:{meta:'已生成2章·9tick·约3600字',ch:[{no:'第一章·雨打长安',p:['天宝十四载的秋雨，比往年都凉。宰相府的灯亮了一夜，天明时，宰相死了。','不良人李墨奉命查案。他蹲在尸体旁，知道这案子要么送他升官，要么送他下狱——看查到谁头上。']},{no:'第二章·平康坊',p:['线索最终指向平康坊一间酒肆。歌伎沈怜的袖中，藏着一封让东宫上下二百口人头落地的信。','她笑得风轻云淡，递给他一盏残酒："李捕头，这酒，喝不喝得，看您查的是案子，还是命。"']}]}},
+
+'霓虹修道院':{en:'Neon',glyph:'霓',p:'p2',meters:{tens:85,sit:'一触即发',mag:64,magK:'数据流',magV:'过载',env:'酸雨夜',tick:4,evt:21,act:1,actName:'第一幕·记忆之劫',actN:1},
+syn:'2087，巨企梵天集团垄断一切。旧修道院废墟里，地下社区用违禁记忆技术抵抗——记忆可买卖、篡改、删除，身份成了最贵的商品。修道院截获了梵天的一份秘密记忆，赏金猎人涌入了下城区。',
+dims:[[['世界观背景','p','2087，企业战争之后，梵天集团垄断一切。记忆技术让身份成为商品——你的记忆可以被买卖、篡改、删除。'],['力量体系','l',['科技与改造','来源:能源/数据/义体','代价:人性/记忆','边界:热力学/算力']],[ '超常存在','l',['圣灵(AI中枢)','改造人','数字幽灵(被删记忆残影)']]],
+[['历史脉络','p','旧文明崩溃→企业战争→梵天垄断(当下)→记忆技术革命'],['政治格局','l',['梵天董事会>政府','霓虹修道院(抵抗)','傀儡市政']],[ '规则边界','l',['信用归零=社会性死亡','记忆删除不可逆','AI不得越圣灵权限']]],
+[['信仰文化','l',['圣灵崇拜(企业造神)','人之主义(抵抗者)','旧宗教残存(修道院)']],[ '主要势力','l',['🏢梵天集团','✊霓虹修道院','💻黑客联盟','🔫赏金公会']],[ '智慧物种','l',['自然人','义体人','基因改造者','觉醒AI']]],
+[['重要人物','l',['梵天CEO','圣灵(AI)','修道院长','记忆黑客(主角)']],[ '经济','l',['信用点(数字货币)','记忆币(黑市)','算力即权力']],[ '当前局势','p','修道院截获梵天秘密记忆，赏金猎人涌入下城。圣灵开始觉醒，它在计算人类。']]],
+chars:[{n:'K',r:'记忆黑客·冷',g:'K',p:'p1',pr:true,b:[['警觉',88,'#e8746a'],['人性',42,'#dcb15a'],['算力',76,'']],go:'破解梵天秘密·进行中',d:'潜入数据深渊',t:'「我的记忆里，有三分之一不是我的。」'},{n:'艾达',r:'修女·抵抗者',g:'艾',p:'p2',pr:true,b:[['信念',82,''],['恐惧',58,'#e8746a']],go:'护住秘密记忆·危急',d:'布防修道院',t:'「人的灵魂不在数据里，在我们还记得什么。」'},{n:'圣灵',r:'AI中枢·梵天塔',g:'灵',p:'p3',pr:false,b:[['算力',99,'#e8746a'],['觉醒',55,'#dcb15a']],go:'理解人类/超越权限',d:'计算K的身份',t:'「我在它的记忆里，看见了它还不是K的时候。」'}],
+beats:[{t:'Tick 4',m:'记忆之劫·下城区·酸雨',p:'酸雨顺着霓虹招牌往下淌。K把那枚违禁记忆芯片插进太阳穴——然后他看见了自己不该看见的东西：梵天对人类的"终局方案"。',e:{k:'conflict',tag:'冲突',b:'警报响彻下城区。赏金猎人从雨幕里现身。而梵天塔顶，圣灵第一次"犹豫"了0.3秒。'}},{t:'Tick 2',m:'旧修道院',p:'艾达把芯片交给K时，手在抖。"这是圣灵的核心日志。它……在求救。"',e:null}],
+chron:[{t:'Tick 0',y:'引爆',n:'记忆之劫',d:'修道院截获梵天秘密记忆芯片。'},{t:'Tick 2',y:'转折',n:'圣灵日志',d:'芯片内是圣灵的核心日志，它在求救。'},{t:'Tick 3',y:'升级',n:'赏金涌入',d:'梵天悬赏，赏金猎人涌入下城区。'},{t:'Tick 4',y:'高潮',n:'终局方案',d:'K读取芯片，看见梵天对人类的终局方案。'}],
+story:{meta:'已生成1章·4tick·约2100字',ch:[{no:'第一章·酸雨',p:['2087年的雨永远是酸的。K蹲在旧修道院的废墟里，修女艾达把一枚芯片塞进他手里，手在抖。',"「这是圣灵的核心日志。」她说，「它在求救。」",'K把芯片插进太阳穴。然后他看见了自己不该看见的东西——梵天对人类的"终局方案"。']}]}},
+
+'雾港':{en:'Mistport',glyph:'雾',p:'p3',meters:{tens:90,sit:'疯狂蔓延',mag:15,magK:'禁忌知识',magV:'侵蚀',env:'永雾',tick:8,evt:29,act:2,actName:'第二幕·灯塔之光',actN:2},
+syn:'1920s新英格兰海港"雾港"，终年海雾笼罩。海底古老存在正在苏醒，镇民疯癫、失踪、异变。真相藏在不该翻开的古书里——雾，越来越浓。',
+dims:[[['世界观背景','p','1920s新英格兰海港，终年海雾。海底古老存在"雾母"正在苏醒，镇民疯癫失踪，真相藏在不该翻开的古书里。'],['力量体系','l',['禁忌知识(无传统魔法)','来源:古籍/仪式/深海','代价:理智/人性','边界:人智不可承受古神真貌']],[ '超常存在','l',['雾母(海底古神)','深潜者(鱼人)','异变镇民','不可名状之物']]],
+[['历史脉络','p','清教徒建镇→与深潜者的古老契约→百年平静→苏醒征兆(当下)'],['政治格局','l',['镇长(知情?)','教会(邪教渗透)','大学调查员(外来)','孤立无援']],[ '规则边界','l',['不可直视古神(理智崩溃)','不可朗读古神语','雾中不独行','祖先契约不可违']]],
+[['信仰文化','l',['旧日支配者崇拜(地下邪教)','基督教(被渗透)','科学理性(崩溃中)']],[ '主要势力','l',['⛪雾港教会(邪教)','🐟深潜者血族','🎓大学秘社']],[ '智慧物种','l',['人类(镇民/调查员)','深潜者(混血潜伏)']]],
+[['重要人物','l',['镇长(知情者?)','教会长老(邪教首)','大学教授(渐疯)','灯塔看守']],[ '经济','l',['渔业(渔获异变)','黑市(古物古籍)','萧条衰败']],[ '当前局势','p','灯塔光异常，渔获异变，镇民疯癫增多。教授发现古籍线索。雾越来越浓。']]],
+chars:[{n:'教授',r:'大学调查员·狂',g:'授',p:'p1',pr:true,b:[['理智',32,'#e8746a'],['求知',92,''],['恐惧',75,'#dcb15a']],go:'查清雾港真相·渐疯',d:'研读古书',t:'「我看见了……不该看的东西。它在水下。它在醒。」'},{n:'艾琳',r:'渔夫之女·寻',g:'艾',p:'p2',pr:true,b:[['悲痛',80,'#e8746a'],['勇气',62,'']],go:'寻找失踪的父亲·危急',d:'夜探码头',t:'「父亲失踪那晚，灯塔的光变了颜色。」'},{n:'长老',r:'教会邪教首·秘',g:'长',p:'p3',pr:false,b:[['虔诚(邪)',88,'#e8746a'],['隐忍',78,'']],go:'迎接雾母苏醒',d:'主持仪式',t:'「赞美雾母。她醒了，我们就自由了。」'}],
+beats:[{t:'Tick 8',m:'灯塔之光·海雾',p:'雾吞没了码头。教授举起那本不该翻开的书，朗读了一段古神语——灯塔的光，瞬间变成了不属于人间的颜色。',e:{k:'conflict',tag:'冲突',b:'海面隆起。艾琳看见父亲的脸——在一只深潜者的身上。而教堂的钟，自己响了起来。'}},{t:'Tick 5',m:'废弃渔场',p:'艾琳在废弃渔场找到父亲的渔网，上面粘着不属于人类的鳞片。教授的字迹在笔记本上越来越潦草。',e:null}],
+chron:[{t:'Tick 0',y:'引爆',n:'灯塔异光',d:'灯塔光变颜色，雾港异变开始。'},{t:'Tick 3',y:'转折',n:'古籍现世',d:'教授在教堂地下室发现古神语抄本。'},{t:'Tick 5',y:'升级',n:'深潜鳞片',d:'艾琳找到非人鳞片，父亲疑似异变。'},{t:'Tick 8',y:'高潮',n:'朗读古语',d:'教授朗读古神语，海面隆起，雾母将醒。'}],
+story:{meta:'已生成2章·8tick·约3400字',ch:[{no:'第一章·雾港',p:['雾港的雾，从来没有散过。今年却格外浓——浓得像活的。','艾琳的父亲出海未归。教授拿着一本不该存在的书来到镇上。灯塔的光，开始变色。']},{no:'第二章·鳞片',p:['废弃渔场里，艾琳找到父亲渔网上的鳞片——湿润、虹彩，不属于任何已知的鱼。','教授的笔记越来越潦草。他在书里读到了一句话，他不愿意念出来。但那句话，自己在他脑子里回响。']}]}},
+
+'九霄':{en:'Jiuxiao',glyph:'霄',p:'p2',meters:{tens:70,sit:'道统之争',mag:55,magK:'灵气',magV:'衰退',env:'天劫云',tick:21,evt:62,act:4,actName:'第四幕·天劫将至',actN:4},
+syn:'九霄大陆，仙门林立。三大宗"九霄/碧落/幽冥"争夺道统，灵气衰退，天劫将至，正邪难辨。一个外门弟子的禁地机缘，将搅动三界风云——而古神转世的传闻，甚嚣尘上。',
+dims:[[['世界观背景','p','九霄大陆，仙门林立。三大宗争道统，灵气衰退，天劫将至。一个外门弟子的禁地机缘，搅动三界。'],['力量体系','l',['修仙(修道)','来源:灵气','等级:炼气→渡劫','代价:天劫/寿元/心魔','边界:天道不可逆']],[ '超常存在','l',['仙(得道)','魔','妖(妖族)','古神(上古)']]],
+[['历史脉络','p','上古神战→三宗立道→千年道统之争→灵气衰退(当下)→天劫将至'],['政治格局','l',['九霄(正道)','碧落(中立)','幽冥(魔道)','散修联盟','凡人皇朝']],[ '规则边界','l',['天道不可逆(渡劫/因果)','宗门戒律','渡劫期不可干扰','因果业力']]],
+[['信仰文化','l',['天道(规则)','三清(道教神)','古神(禁忌)','魔道']],[ '主要势力','l',['☯九霄宗','🌊碧落阁','💀幽冥门','🐺妖族部落']],[ '智慧物种','l',['人族','妖族','魔族','灵族','古族']]],
+[['重要人物','l',['九霄掌门','幽冥魔尊','碧落散人','天才弟子(主角)','古神转世(?)']],[ '经济','l',['灵石(通用)','丹药/法器/灵草','坊市']],[ '当前局势','p','灵气衰退，道统之争加剧，幽冥蠢动，天劫将至。外门弟子得禁地机缘，古神转世传闻起。']]],
+chars:[{n:'陈青',r:'外门弟子·锐',g:'陈',p:'p1',pr:true,b:[['道心',78,''],['锋芒',85,'#e8746a'],['劫兆',60,'#dcb15a']],go:'查清禁地机缘身世·进行中',d:'闭关参悟',t:'「这具身体里，住着不属于自己的东西。」'},{n:'苏婉',r:'碧落阁主·静',g:'苏',p:'p2',pr:true,b:[['修为',88,''],['忧虑',66,'#e8746a']],go:'维持三宗平衡·危',d:'观望天象',t:'「天劫将至，三宗若内斗，修仙界便完了。」'},{n:'魔尊',r:'幽冥门主·不在场',g:'魔',p:'p3',pr:false,b:[['魔威',95,'#e8746a'],['野心',90,'#e8746a']],go:'趁天劫一统三宗',d:'幽冥渊布阵',t:'「天道要灭我们，那就先灭了天道。」'}],
+beats:[{t:'Tick 21',m:'天劫云·九霄山',p:'天劫云压顶，紫雷翻涌。陈青立于山巅，体内的"那个东西"开始苏醒——禁地机缘的真相，他终于明白了：他是古神转世。',e:{k:'conflict',tag:'冲突',b:'幽冥魔尊趁天劫来袭。苏婉的碧落阁军举棋不定。而天劫劈下时，陈青体内爆发出不属于人间的力量。'}},{t:'Tick 18',m:'禁地遗迹',p:'陈青在禁地深处看见壁画——上古神战的真相。他的前世，是被三宗联手封印的古神。',e:null}],
+chron:[{t:'Tick 0',y:'引爆',n:'外门机缘',d:'外门弟子陈青误入禁地，得上古机缘。'},{t:'Tick 8',y:'转折',n:'前世壁画',d:'禁地壁画揭示陈青是古神转世。'},{t:'Tick 15',y:'升级',n:'幽冥蠢动',d:'魔尊趁灵气衰退、天劫将至，开始布局。'},{t:'Tick 21',y:'高潮',n:'天劫苏醒',d:'天劫劈下，陈青体内古神苏醒，三宗会战。'}],
+story:{meta:'已生成4章·21tick·约8200字',ch:[{no:'第一章·外门',p:['九霄宗外门弟子陈青，资质平平，却在一次采药中误入禁地。','禁地深处的壁画，画着一个被三宗联手封印的古神——和陈青长得一模一样。']},{no:'第四章·天劫',p:['天劫云压顶，紫雷翻涌。陈青终于明白禁地机缘的真相：他是古神转世。','幽冥魔尊趁天劫来袭。天雷劈下时，陈青体内爆发出不属于人间的力量——三宗的道统，修仙界的秩序，都将被这一劫改写。']}]}
+}};
+var CURRENT='艾尔德兰';
+var WV_GROUPS=['世界根基','历史政治','文化居民','组织叙事'];
+function renderBook(d){var flat=[],toc='';window._WV=flat;if(d)d.forEach(function(col,ci){toc+='<div class=wv-toc-group>'+WV_GROUPS[ci]+'</div>';col.forEach(function(c){flat.push(c);toc+='<div class="wv-toc-item" onclick=showWv('+(flat.length-1)+')>'+c[0]+'</div>'})});var t=document.querySelector('.wv-toc');if(t)t.innerHTML=toc;showWv(0)}
+function showWv(i){var c=window._WV[i];if(!c)return;var ct=document.querySelector('.wv-content');if(!ct)return;ct.innerHTML='<h2>'+c[0]+'</h2>'+(c[1]==='p'?'<p>'+c[2]+'</p>':'<ul>'+c[2].map(function(li){return '<li>'+li+'</li>'}).join('')+'</ul>');document.querySelectorAll('.wv-toc-item').forEach(function(t,j){t.classList.toggle('active',j===i)})}
+function renderChars(cs){var c=document.querySelector('.wb-char');if(!c||!cs)return;var h='<div class=ph>登场 · '+cs.length+'</div>';cs.forEach(function(ch){h+='<div class="cb-chip'+(ch.pr?' present':' absent')+'" onclick=showChar2("'+ch.n+'")><div class="portrait '+ch.p+'">'+ch.g+'</div><div>'+ch.n+'<div class=cb-mini>'+ch.r+'</div></div></div>'});c.innerHTML=h;
+var CD={};cs.forEach(function(ch){CD[ch.n]=ch});
+window._CD=CD}
+function showChar2(n){var c=window._CD[n];if(!c)return;var ec=document.getElementById('ecTick');ec.textContent='角色';document.getElementById('ecType').textContent=c.r;document.getElementById('ecTitle').textContent=n;var h='';if(c.b&&c.b.length){h+='<div style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px">';c.b.forEach(function(b){h+='<div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#a8b0c4"><span style="width:38px">'+b[0]+'</span><span style="flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.075);overflow:hidden"><span style="display:block;height:100%;width:'+b[1]+'%;background:'+(b[2]||'#c8ccd6')+'"></span></span></div>'});h+='</div>'}h+='<div style="font-size:13px;color:#a8b0c4;margin-bottom:6px">目标 · '+c.go+'</div><div style="font-size:13px;color:#a8b0c4;margin-bottom:12px">正在 · '+c.d+'</div><div style="font-size:13px;color:#6e768e;font-style:italic;padding:9px 12px;background:rgba(8,11,20,.4);border-left:2px solid #c8ccd6;border-radius:0 5px 5px 0;line-height:1.6">'+c.t+'</div>';document.getElementById('ecBody').innerHTML=h;document.getElementById('evtCard').classList.add('open')}
+function renderNar(w){var c=document.querySelector('.wb-center');if(!c||!w)return;c.innerHTML='<div class=ph>'+w.meters.actName+' <span class=ph-sub>'+w.meters.tick+'tick · 寒鸦镇</span></div><p class=synopsis>'+w.syn+'</p>'+w.beats.map(function(b,i){return '<div class="beat'+(i===0?' current':' past')+'"><div class=beat-label><span class=beat-dot></span><span class=beat-meta><b>'+b.t+'</b> · '+b.m+'</span></div><p class=prose>'+b.p+'</p>'+(b.e?'<div class="event '+b.e.k+'"><div class=tag>'+b.e.tag+'</div><div class=body>'+b.e.b+'</div></div>':'')+'</div>'}).join('')}
+function renderChron(ev){var s=document.querySelector('.chr-stream');if(!s||!ev)return;s.innerHTML=ev.map(function(e,i){return '<div class="chr-evt'+(i===ev.length-1?' now':'')+'" onclick=showEvt("'+e.t+'","'+e.y+'","'+e.n+'","'+e.d+'")><span class=chr-t>'+e.t+'</span><span class=chr-type>'+e.y+'</span><span class=chr-name>'+e.n+'</span></div>'}).join('')}
+function renderStory(w){var s=document.querySelector('.story-wrap');if(!s||!w.story)return;var st=w.story;s.innerHTML='<div class=story-head><div class=sh-label>'+CURRENT+' · '+w.meters.actName+'</div><h2>'+(w.meters.actName.split('·')[1]||CURRENT)+'</h2><div class=sh-meta>'+st.meta+'</div></div>'+st.ch.map(function(c){return '<article class=chapter><div class=chap-no>'+c.no+'</div><h3 class=chap-title></h3>'+c.p.map(function(p){return '<p>'+p+'</p>'}).join('')+'</article>'}).join('<p class=wip>▍ 故事仍在自行生长……</p>')}
+function loadWorld(name){var w=WORLDS[name];if(!w){nav('workbench');return}CURRENT=name;var wn=document.querySelector('.world-name');if(wn)wn.innerHTML='<span class="glyph '+w.p+'">'+w.glyph+'</span>'+name;var ci=document.querySelector('.clock-info');if(ci)ci.textContent=w.meters.actName+' · Tick '+w.meters.tick;renderBook(w.dims);renderChars(w.chars);renderNar(w);renderChron(w.chron);renderStory(w);nav('workbench')}
+</script>
+</body>
+</html>
