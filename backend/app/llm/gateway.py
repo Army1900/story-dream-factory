@@ -21,7 +21,7 @@ class LLMGateway:
         self,
         routing: LLMRoutingConfig,
         api_key: str,
-        base_url: str = "https://open.bigmodel.cn/api/paas/v4",
+        base_url: str = "https://open.bigmodel.cn/api/coding/paas/v4",
     ) -> None:
         self.routing = routing
         self.api_key = api_key

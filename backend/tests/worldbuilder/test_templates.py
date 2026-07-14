@@ -1,7 +1,7 @@
 from app.worldbuilder.templates import BUILTIN_TEMPLATES
 
 def test_three_templates():
-    assert len(BUILTIN_TEMPLATES) == 3
+    assert len(BUILTIN_TEMPLATES) == 16
 
 def test_template_has_genre_and_drafts():
     for t in BUILTIN_TEMPLATES:
@@ -12,4 +12,4 @@ def test_template_has_genre_and_drafts():
 
 def test_template_genres_differ():
     genres = [t["genre"] for t in BUILTIN_TEMPLATES]
-    assert len(set(genres)) == 3
+    assert len(set(genres)) == 16

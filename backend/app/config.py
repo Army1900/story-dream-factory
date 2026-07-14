@@ -14,9 +14,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
 
     # LLM 分层模型
-    llm_tier1_model: str = "openai/glm-4-plus"
-    llm_tier2_model: str = "openai/glm-4-plus"
-    llm_tier3_model: str = "openai/glm-4-flash"
+    llm_tier1_model: str = "glm-4-plus"
+    llm_tier2_model: str = "glm-4-plus"
+    llm_tier3_model: str = "glm-4-flash"
     llm_embedding_model: str = ""
 
     # 生图

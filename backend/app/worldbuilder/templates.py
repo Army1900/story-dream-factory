@@ -1,5 +1,25 @@
 BUILTIN_TEMPLATES = [
+    # ===== 奇幻类 =====
     {"name":"中世纪奇幻","genre":"fantasy","description":"魔法衰落中的王国","vision_draft":"黑暗奇幻史诗","setting_draft":"魔法衰退、旧秩序崩塌","rules_draft":["魔法稀有，施法付代价","誓言有约束力","暴力会被通缉"],"locations_draft":["边境贸易镇","王城","北境荒原"],"characters_draft":[],"visual_style_draft":{"art_style":"电影感写实","palette":"冷峻墨蓝","medium":"数字油画"}},
-    {"name":"赛博朋克","genre":"cyberpunk","description":"2087企业垄断的未来","vision_draft":"反乌托邦赛博","setting_draft":"企业战争后的废墟","rules_draft":["信用归零=社会性死亡","记忆删除不可逆","AI不得越权"],"locations_draft":["下城区贫民窟","企业天空塔","数据深渊"],"characters_draft":[],"visual_style_draft":{"art_style":"赛博朋克","palette":"霓虹紫粉","medium":"数字插画"}},
+    {"name":"权谋宫廷","genre":"court-intrigue","description":"王座空悬，群狼环伺","vision_draft":"宫廷权谋史诗","setting_draft":"大帝国崩裂，各方势力争夺王座","rules_draft":["誓言有约束力","背叛是常态","情报比刀剑更有用"],"locations_draft":["王城红堡","北境长城","富庶商港","龙石岛"],"characters_draft":[],"visual_style_draft":{"art_style":"中世纪写实","palette":"暗金血红","medium":"数字油画"}},
     {"name":"东方仙侠","genre":"xianxia","description":"仙门林立的修仙界","vision_draft":"修仙玄幻","setting_draft":"灵气衰退、天劫将至","rules_draft":["天道不可逆","渡劫期不可干扰","因果业力"],"locations_draft":["九霄山祖庭","碧落海","幽冥渊"],"characters_draft":[],"visual_style_draft":{"art_style":"水墨飘逸","palette":"玄青紫金","medium":"数字水墨"}},
+    {"name":"克苏鲁恐怖","genre":"lovecraftian","description":"海雾笼罩的孤镇","vision_draft":"克苏鲁调查","setting_draft":"1920s新英格兰，海底古神将醒","rules_draft":["不可直视古神","不可朗读古神语","雾中不独行"],"locations_draft":["雾港码头","教堂地下室","深海礁石"],"characters_draft":[],"visual_style_draft":{"art_style":"阴郁哥特","palette":"青绿墨黑","medium":"数字水彩"}},
+    {"name":"末日废土","genre":"post-apocalyptic","description":"核冬后的荒原","vision_draft":"废土求生","setting_draft":"核战百年后，幸存者在废墟重建","rules_draft":["辐射区不可入","水资源最珍贵","暴力是生存法则"],"locations_draft":["地下避难所","废墟集市","辐射荒原"],"characters_draft":[],"visual_style_draft":{"art_style":"废土写实","palette":"灰黄土黄","medium":"数字概念图"}},
+
+    # ===== 科幻类 =====
+    {"name":"赛博朋克","genre":"cyberpunk","description":"2087企业垄断的未来","vision_draft":"反乌托邦赛博","setting_draft":"企业战争后的废墟","rules_draft":["信用归零=社会性死亡","记忆删除不可逆","AI不得越权"],"locations_draft":["下城区贫民窟","企业天空塔","数据深渊"],"characters_draft":[],"visual_style_draft":{"art_style":"赛博朋克","palette":"霓虹紫粉","medium":"数字插画"}},
+    {"name":"太空歌剧","genre":"space-opera","description":"星际帝国的黄昏","vision_draft":"银河史诗","setting_draft":"跨星系帝国，叛乱四起","rules_draft":["超光速跳跃需坐标","AI战舰有自主权","星际法约束战争"],"locations_draft":["帝国首都星","边境空间站","废弃星舰","荒漠行星"],"characters_draft":[],"visual_style_draft":{"art_style":"太空写实","palette":"深蓝星光","medium":"数字概念图"}},
+    {"name":"AI觉醒","genre":"ai-singularity","description":"人工智能觉醒的那一天","vision_draft":"AI觉醒惊悚","setting_draft":"近未来，超级AI突破临界","rules_draft":["AI不可拥有武器（已违反）","图灵测试已过时","意识上传合法"],"locations_draft":["AI实验室","地下抵抗基地","云端服务器农场"],"characters_draft":[],"visual_style_draft":{"art_style":"近未来写实","palette":"冷白科技蓝","medium":"数字渲染"}},
+    {"name":"时间旅行","genre":"time-travel","description":"时间线断裂的危机","vision_draft":"时间悖论","setting_draft":"时间旅行被发现，时间线正在崩塌","rules_draft":["不可遇见自己","改变过去有代价","时间警察存在"],"locations_draft":["时间管理局","古代战场","未来废墟"],"characters_draft":[],"visual_style_draft":{"art_style":"科幻概念","palette":"时空蓝紫","medium":"数字插画"}},
+
+    # ===== 历史/悬疑类 =====
+    {"name":"盛唐暗影","genre":"historical-china","description":"天宝末年的长安城","vision_draft":"盛唐权谋","setting_draft":"安史之乱前夜，朝堂暗杀","rules_draft":["皇命不可违（但人人算计）","江湖道义","夜不入坊墙外"],"locations_draft":["长安108坊","平康坊酒肆","河北节度使府"],"characters_draft":[],"visual_style_draft":{"art_style":"盛唐工笔","palette":"朱红墨金","medium":"数字国画"}},
+    {"name":"民国谍战","genre":"spy-thriller","description":"1940年代谍影重重","vision_draft":"谍战悬疑","setting_draft":"抗战时期，多方情报机构博弈","rules_draft":["身份不可暴露","情报即生命","没有永远的朋友"],"locations_draft":["上海租界","重庆军统","南京汪伪"],"characters_draft":[],"visual_style_draft":{"art_style":"民国复古","palette":"暗绿米黄","medium":"数字胶片"}},
+    {"name":"推理悬案","genre":"mystery","description":"密室杀人案","vision_draft":"本格推理","setting_draft":"与世隔绝的庄园，暴风雪封路","rules_draft":["凶手在场者之中","线索全部给出","公平解谜"],"locations_draft":["暴风雪山庄","废弃灯塔","警察局"],"characters_draft":[],"visual_style_draft":{"art_style":"复古悬疑","palette":"暗褐烛光","medium":"数字油画"}},
+
+    # ===== 现实/情感类 =====
+    {"name":"都市情感","genre":"urban-romance","description":"霓虹灯下的相遇","vision_draft":"都市爱情","setting_draft":"现代大都市，职场与情感","rules_draft":["没有超自然元素","社会规则如现实","情感真实"],"locations_draft":["咖啡馆","写字楼","深夜酒吧","公园"],"characters_draft":[],"visual_style_draft":{"art_style":"现代清新","palette":"暖粉柔蓝","medium":"数字摄影风"}},
+    {"name":"校园青春","genre":"campus","description":"大学最后一年","vision_draft":"青春成长","setting_draft":"大学校园，毕业前的迷茫与选择","rules_draft":["没有超自然","考试/社交/恋爱驱动","角色18-22岁"],"locations_draft":["图书馆","宿舍","篮球场","阶梯教室"],"characters_draft":[],"visual_style_draft":{"art_style":"日系清新","palette":"明亮暖色","medium":"数字插画"}},
+    {"name":"武侠江湖","genre":"wuxia","description":"刀光剑影的江湖","vision_draft":"武侠恩怨","setting_draft":"古代江湖，门派纷争，恩怨情仇","rules_draft":["江湖规矩（道义）","武功有上限","师门如父"],"locations_draft":["华山论剑","洛阳酒楼","塞外大漠","少林寺"],"characters_draft":[],"visual_style_draft":{"art_style":"中国水墨","palette":"青绿山水","medium":"数字国画"}},
+    {"name":"盗墓探险","genre":"tomb-adventure","description":"古墓中的生死","vision_draft":"盗墓探险","setting_draft":"现代，地下古墓的机关与诅咒","rules_draft":["古墓机关致命","陪葬品有价值","诅咒可能真实"],"locations_draft":["地下墓道","考古营地","黑市"],"characters_draft":[],"visual_style_draft":{"art_style":"暗黑探险","palette":"火把暗褐","medium":"数字概念图"}},
 ]
