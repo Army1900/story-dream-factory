@@ -76,3 +76,9 @@ uv run pytest
 - 反思（周期性 LLM 生成高层洞察，每 N tick）
 - CharacterAgent 决策时检索相关记忆
 - Simulator tick 后自动写入记忆
+
+## M5 导演介入 + WebSocket 已实现
+
+- 导演介入 API（POST /worlds/{id}/director/inject，4 种类型）
+- Simulator tick 开头处理注入队列（注入事件/改目标/改规则）
+- WebSocket 实时推送（/worlds/{id}/ws，step 指令→事件推送）
