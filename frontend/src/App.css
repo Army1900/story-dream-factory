@@ -1654,3 +1654,315 @@
     font-size: 34px;
   }
 }
+
+/* ========================================
+   Play controls — WebSocket 自动推进
+   ======================================== */
+.wb-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  margin: 6px 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--glass);
+  flex-wrap: wrap;
+}
+.play-btn {
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--ink);
+  background: var(--glass-2);
+  color: var(--ink);
+  transition: all 0.18s;
+  letter-spacing: 0.01em;
+}
+.play-btn:hover:not(:disabled) {
+  background: var(--glass-3);
+}
+.play-btn.playing {
+  background: var(--ink);
+  color: #0a0d16;
+  border-color: var(--ink);
+  box-shadow: 0 0 16px rgba(233, 236, 245, 0.18);
+}
+.play-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.speed-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.speed-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.speed-opt {
+  font-family: inherit;
+  font-size: 12.5px;
+  padding: 6px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  border: 1px solid var(--line-strong);
+  background: var(--glass);
+  color: var(--ink-2);
+  transition: all 0.15s;
+}
+.speed-opt:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+.speed-opt.active {
+  background: var(--glass-3);
+  color: var(--ink);
+  border-color: var(--accent);
+}
+.speed-opt:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ---- WebSocket status indicator ---- */
+.ws-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  margin-left: auto;
+}
+.ws-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-4);
+  transition: all 0.25s;
+  flex-shrink: 0;
+}
+.ws-mini.connecting .ws-dot {
+  background: var(--warn);
+  box-shadow: 0 0 8px var(--warn);
+  animation: livepulse 1s ease-in-out infinite;
+}
+.ws-mini.connected .ws-dot {
+  background: var(--ok);
+  box-shadow: 0 0 8px var(--ok);
+  animation: livepulse 1.4s ease-in-out infinite;
+}
+.ws-mini.connected {
+  color: var(--ok);
+}
+.ws-mini.error .ws-dot {
+  background: var(--bad);
+  box-shadow: 0 0 8px var(--bad);
+}
+.ws-mini.error {
+  color: var(--bad);
+}
+
+/* ========================================
+   Director Panel — 导演介入
+   ======================================== */
+.dp-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 70;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: fade 0.25s both;
+}
+.director-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 360px;
+  max-width: 92vw;
+  z-index: 80;
+  background: rgba(12, 16, 28, 0.94);
+  border-left: 1px solid var(--line-strong);
+  padding: 26px 24px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -16px 0 50px rgba(0, 0, 0, 0.5);
+  animation: dpSlide 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  overflow-y: auto;
+}
+@keyframes dpSlide {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.dp-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.dp-head h2 {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.dp-close {
+  cursor: pointer;
+  color: var(--ink-3);
+  font-size: 22px;
+  background: none;
+  border: none;
+  line-height: 1;
+  padding: 0;
+}
+.dp-close:hover {
+  color: var(--ink);
+}
+.dp-sub {
+  font-size: 12.5px;
+  color: var(--ink-2);
+  margin-bottom: 20px;
+  line-height: 1.55;
+}
+.intervene-type {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  margin-bottom: 8px;
+  transition: all 0.15s;
+  background: var(--glass);
+}
+.intervene-type:hover {
+  border-color: var(--accent);
+}
+.intervene-type.selected {
+  border-color: var(--accent);
+  background: var(--glass-2);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.it-soft {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.it-soft.green {
+  background: rgba(126, 203, 142, 0.18);
+  color: var(--ok);
+}
+.it-soft.amber {
+  background: rgba(220, 177, 90, 0.18);
+  color: var(--warn);
+}
+.it-soft.red {
+  background: rgba(232, 116, 106, 0.18);
+  color: var(--bad);
+}
+.it-text .t {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.it-text .d {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  margin-top: 1px;
+}
+.dp-target {
+  margin-top: 14px;
+  background: var(--glass);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 11px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  width: 100%;
+}
+.dp-target::placeholder {
+  color: var(--ink-3);
+}
+.dp-target:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.dp-textarea {
+  margin-top: 12px;
+  background: var(--glass);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 90px;
+  width: 100%;
+  color: var(--ink);
+  line-height: 1.6;
+}
+.dp-textarea::placeholder {
+  color: var(--ink-3);
+}
+.dp-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.dp-error {
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: 7px;
+  background: rgba(232, 116, 106, 0.1);
+  border: 1px solid var(--bad);
+  border-left-width: 3px;
+  color: var(--bad);
+  font-size: 12.5px;
+}
+.dp-submit {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: #0a0d16;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+.dp-submit:hover:not(:disabled) {
+  background: #fff;
+}
+.dp-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .wb-controls {
+    gap: 10px;
+  }
+  .director-panel {
+    width: 92vw;
+  }
+}

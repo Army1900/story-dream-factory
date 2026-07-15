@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { useStore, type World } from './store'
+import { useStore, type World, type DirectorDirectiveType } from './store'
 import { CanvasBackground } from './CanvasBackground'
 import './App.css'
 
@@ -621,7 +621,10 @@ type Dimension = 'worldview' | 'workbench' | 'chronicle' | 'cast' | 'story'
 
 function SimView() {
   const [dim, setDim] = useState<Dimension>('workbench')
+  const [showDirector, setShowDirector] = useState(false)
   const world = useStore((s) => s.selectedWorld)
+  // 记录打开导演面板前是否在自动播放，提交/关闭后据此恢复
+  const wasPlayingRef = useRef(false)
 
   // lock body scroll while inside the world workspace
   // (mirrors prototype `body[data-mode=world]{overflow:hidden}`)
@@ -633,11 +636,32 @@ function SimView() {
     }
   }, [])
 
+  // 离开世界视图时断开 WebSocket，避免后台持续推演
+  useEffect(() => {
+    return () => useStore.getState().disconnectWS()
+  }, [])
+
+  const openDirector = () => {
+    wasPlayingRef.current = useStore.getState().autoPlay
+    if (wasPlayingRef.current) useStore.getState().toggleAutoPlay()
+    setShowDirector(true)
+  }
+  const resumeAutoPlay = () => {
+    if (wasPlayingRef.current) {
+      wasPlayingRef.current = false
+      useStore.getState().toggleAutoPlay()
+    }
+  }
+  const closeDirector = () => {
+    setShowDirector(false)
+    resumeAutoPlay()
+  }
+
   if (!world) return null
 
   return (
     <>
-      <WorldTopBar />
+      <WorldTopBar onOpenDirector={openDirector} />
       <WorldNav dim={dim} onChange={setDim} />
       <main className="world-main">
         <section className="view active" data-view={dim}>
@@ -648,12 +672,22 @@ function SimView() {
           {dim === 'story' && <Story />}
         </section>
       </main>
+      {showDirector && (
+        <DirectorPanel
+          worldId={world.id}
+          onSubmitted={() => {
+            setShowDirector(false)
+            resumeAutoPlay()
+          }}
+          onClose={closeDirector}
+        />
+      )}
     </>
   )
 }
 
 // ============ World top bar ============
-function WorldTopBar() {
+function WorldTopBar({ onOpenDirector }: { onOpenDirector: () => void }) {
   const goHome = useStore((s) => s.goHome)
   const world = useStore((s) => s.selectedWorld)
   const tick = useStore((s) => s.tick)
@@ -693,7 +727,12 @@ function WorldTopBar() {
         >
           ▶
         </button>
-        <button className="btn-ctrl" title="导演介入（即将推出）" disabled>
+        <button
+          className="btn-ctrl"
+          onClick={onOpenDirector}
+          disabled={!simStarted}
+          title="导演介入"
+        >
           🎬
         </button>
       </div>
@@ -747,6 +786,21 @@ function Workbench() {
   const stepping = useStore((s) => s.stepping)
   const simError = useStore((s) => s.simError)
   const tick = useStore((s) => s.tick)
+  const autoPlay = useStore((s) => s.autoPlay)
+  const playSpeed = useStore((s) => s.playSpeed)
+  const wsStatus = useStore((s) => s.wsStatus)
+  const toggleAutoPlay = useStore((s) => s.toggleAutoPlay)
+  const setPlaySpeed = useStore((s) => s.setPlaySpeed)
+
+  const wsReady = wsStatus === 'connected'
+  const wsLabel =
+    wsStatus === 'connected'
+      ? '已连接'
+      : wsStatus === 'connecting'
+        ? '连接中'
+        : wsStatus === 'error'
+          ? '连接错误'
+          : '未连接'
 
   return (
     <div className="wb">
@@ -775,6 +829,45 @@ function Workbench() {
           </span>
         </div>
         {world?.setting && <p className="synopsis">{world.setting}</p>}
+        {simStarted && (
+          <div className="wb-controls">
+            <button
+              className={'play-btn' + (autoPlay ? ' playing' : '')}
+              onClick={toggleAutoPlay}
+              disabled={!wsReady}
+              title={
+                autoPlay
+                  ? '暂停自动推进'
+                  : wsReady
+                    ? '开始自动播放'
+                    : 'WebSocket 未连接'
+              }
+            >
+              {autoPlay ? '⏸ 暂停' : '▶ 自动播放'}
+            </button>
+            <div className="speed-group">
+              <span className="speed-label">间隔</span>
+              {[3000, 5000, 10000].map((ms) => (
+                <button
+                  key={ms}
+                  className={'speed-opt' + (playSpeed === ms ? ' active' : '')}
+                  onClick={() => setPlaySpeed(ms)}
+                  disabled={!wsReady || autoPlay}
+                  title={`${ms / 1000} 秒一拍`}
+                >
+                  {ms / 1000}s
+                </button>
+              ))}
+            </div>
+            <span
+              className={'ws-mini ' + wsStatus}
+              title={'WebSocket · ' + wsLabel}
+            >
+              <span className="ws-dot" />
+              {wsLabel}
+            </span>
+          </div>
+        )}
         {simError && <div className="sim-error">⚠ {simError}</div>}
         <Narrative events={events} simStarted={simStarted} stepping={stepping} />
       </div>
@@ -1160,6 +1253,181 @@ function Narrative({
         </div>
       )}
     </div>
+  )
+}
+
+// ============ Director Panel 导演介入 ============
+const DIRECTOR_TYPES: {
+  key: DirectorDirectiveType
+  soft: 'green' | 'amber' | 'red'
+  softLabel: string
+  title: string
+  desc: string
+  needsTarget: boolean
+  placeholder: string
+}[] = [
+  {
+    key: 'inject_event',
+    soft: 'green',
+    softLabel: '软',
+    title: '注入事件',
+    desc: '暴风雨、陌生人到来…',
+    needsTarget: false,
+    placeholder: '描述要注入的事件… 例如：一名披斗篷的旅人此刻推门而入，目光锁定艾伦。',
+  },
+  {
+    key: 'set_goal',
+    soft: 'green',
+    softLabel: '软',
+    title: '改角色目标',
+    desc: '赋予某人新的动机',
+    needsTarget: true,
+    placeholder: '描述新的目标… 例如：复仇 / 守护妹妹。',
+  },
+  {
+    key: 'modify_world',
+    soft: 'amber',
+    softLabel: '硬',
+    title: '改世界规则',
+    desc: '战争爆发、魔法失效…',
+    needsTarget: false,
+    placeholder: '描述世界变化… 例如：战争全面爆发，商路断绝。',
+  },
+  {
+    key: 'force_action',
+    soft: 'red',
+    softLabel: '硬',
+    title: '强制行动',
+    desc: '令某角色做出指定行为',
+    needsTarget: true,
+    placeholder: '描述强制的行为… 例如：艾伦当场放下剑，跪倒在贝拉面前。',
+  },
+]
+
+function DirectorPanel({
+  worldId,
+  onSubmitted,
+  onClose,
+}: {
+  worldId: string
+  onSubmitted: () => void
+  onClose: () => void
+}) {
+  const injectDirective = useStore((s) => s.injectDirective)
+  const characters = useCharacters()
+  const [selIdx, setSelIdx] = useState(0)
+  const [text, setText] = useState('')
+  const [target, setTarget] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const sel = DIRECTOR_TYPES[selIdx]
+
+  async function submit() {
+    const content = text.trim()
+    if (!content || submitting) return
+    setSubmitting(true)
+    setError(null)
+    let payload: Record<string, unknown>
+    switch (sel.key) {
+      case 'inject_event':
+        payload = { description: content }
+        break
+      case 'set_goal':
+        payload = { goal: content }
+        break
+      case 'modify_world':
+        // 写入 state_flags，用时间戳作 key 避免相互覆盖
+        payload = { key: 'state_flags', value: { [`d${Date.now()}`]: content } }
+        break
+      case 'force_action':
+        payload = { description: content, action: content }
+        break
+    }
+    const ok = await injectDirective(
+      worldId,
+      {
+        type: sel.key,
+        payload,
+        target: sel.needsTarget ? target.trim() : '',
+      },
+    )
+    setSubmitting(false)
+    if (ok) {
+      onSubmitted()
+    } else {
+      setError('提交失败，请查看错误提示后重试。')
+    }
+  }
+
+  return (
+    <>
+      <div className="dp-backdrop" onClick={onClose} />
+      <aside className="director-panel" role="dialog" aria-label="导演介入">
+        <div className="dp-head">
+          <h2>导演介入</h2>
+          <button
+            className="dp-close"
+            onClick={onClose}
+            title="关闭"
+            aria-label="关闭"
+          >
+            ×
+          </button>
+        </div>
+        <div className="dp-sub">
+          世界将在下一 tick 接受你的意志。软介入尊重角色自主，硬介入确定生效。
+        </div>
+
+        {DIRECTOR_TYPES.map((t, i) => (
+          <div
+            key={t.key}
+            className={'intervene-type' + (i === selIdx ? ' selected' : '')}
+            onClick={() => setSelIdx(i)}
+          >
+            <span className={`it-soft ${t.soft}`}>{t.softLabel}</span>
+            <div className="it-text">
+              <div className="t">{t.title}</div>
+              <div className="d">{t.desc}</div>
+            </div>
+          </div>
+        ))}
+
+        {sel.needsTarget && (
+          <input
+            className="dp-target"
+            list="dp-char-list"
+            placeholder="目标角色名（如：艾伦）"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            disabled={submitting}
+          />
+        )}
+        <datalist id="dp-char-list">
+          {characters.map((c) => (
+            <option key={c} value={c} />
+          ))}
+        </datalist>
+
+        <textarea
+          className="dp-textarea"
+          placeholder={sel.placeholder}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          disabled={submitting}
+        />
+
+        {error && <div className="dp-error">⚠ {error}</div>}
+
+        <button
+          className="dp-submit"
+          onClick={submit}
+          disabled={submitting || !text.trim()}
+        >
+          {submitting ? '提交中…' : '提交 · 下个 tick 生效'}
+        </button>
+      </aside>
+    </>
   )
 }
 
