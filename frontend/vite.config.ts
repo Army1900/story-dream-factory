@@ -7,7 +7,11 @@ export default defineConfig({
   server: {
     proxy: {
       '/health': 'http://localhost:8000',
-      '/worlds': 'http://localhost:8000',
+      '/worlds': {
+        target: 'http://localhost:8000',
+        ws: true,          // ← 关键：启用 WebSocket 代理
+        changeOrigin: true,
+      },
     },
   },
 })
