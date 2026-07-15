@@ -121,6 +121,9 @@ class Simulator:
             new_mems = self.character_memories.get(char_name, [])
             agent.memories = new_mems
 
+        # ⑥b 反思（每 interval tick 触发一次，用 LLM 生成高层洞察）
+        await self._try_reflect(current_tick)
+
         self.world.clock_tick += 1
 
         # ⑦ 文件持久化（仅当 world_dir 已接线）
@@ -197,6 +200,23 @@ class Simulator:
             "locations": [],
             "relationships": [],
         }
+
+    async def _try_reflect(self, current_tick: int) -> None:
+        """每 interval tick 触发反思：LLM 生成高层洞察，追加到角色记忆。"""
+        from app.memory.reflection import Reflector
+        reflector = Reflector(self.llm, interval=5, min_memories=5)
+        for agent in self.agents:
+            char_name = agent.character.name
+            mems = self.character_memories.get(char_name, [])
+            if not reflector.should_reflect(current_tick, len(mems)):
+                continue
+            try:
+                insight = await reflector.reflect(mems, character_name=char_name, current_tick=current_tick)
+                if insight:
+                    self.character_memories.setdefault(char_name, []).append(insight)
+                    agent.memories = self.character_memories[char_name]
+            except Exception:
+                pass  # 反思失败不阻塞 tick
 
     def _update_relationships(self, actions: list[ResolvedAction]) -> None:
         """根据行动类型更新角色间关系（简化版：同地点的角色互相影响）。"""
