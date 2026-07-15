@@ -388,17 +388,13 @@ function BuilderFlow({ onDone, onCancel }: { onDone: () => void; onCancel: () =>
     return (
       <div className="builder-overlay">
         <header className="topbar">
-          <button className="back-btn" onClick={onCancel} title="返回主页">
-            ←
+          <button className="btn" onClick={() => { resetBuilder(); onCancel(); }} title="返回主页">
+            ← 返回主页
           </button>
           <div className="brand">
             <span className="dot" />
             <span className="name">新建世界</span>
           </div>
-          <span className="spacer" />
-          <button className="btn" onClick={onCancel} title="关闭">
-            ✕ 关闭
-          </button>
           <span className="spacer" />
           <span className="builder-progress">
             选择模板 · <b>第 0 / 7 步</b>
@@ -448,8 +444,8 @@ function BuilderFlow({ onDone, onCancel }: { onDone: () => void; onCancel: () =>
   return (
     <div className="builder-overlay">
       <header className="topbar">
-        <button className="back-btn" onClick={onCancel} title="返回主页">
-          ←
+        <button className="btn" onClick={() => { resetBuilder(); onCancel(); }} title="放弃构建，返回主页">
+          ← 返回主页
         </button>
         <div className="brand">
           <span className="dot" />
@@ -458,19 +454,6 @@ function BuilderFlow({ onDone, onCancel }: { onDone: () => void; onCancel: () =>
         <span className="builder-progress">
           新世界 · <b>第 {currentStageIdx + 1} / 7 步 · {stageInfo?.name}</b>
         </span>
-        <span className="spacer" />
-        <button
-          className="btn"
-          onClick={() => {
-            if (confirm('确定要放弃当前世界构建？已填写的对话将丢失。')) {
-              resetBuilder()
-              onCancel()
-            }
-          }}
-          title="放弃构建，返回主页"
-        >
-          ✕ 取消
-        </button>
       </header>
       <div className="builder-wrap">
         <aside className="builder-stages">
