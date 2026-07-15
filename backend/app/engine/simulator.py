@@ -90,16 +90,10 @@ class Simulator:
         # ③ 关系变化（基于行动类型）
         self._update_relationships(resolved_actions)
 
-        # ④ 世界意识叙述（批量）
+        # ④ 世界意识叙述（按地点分组：同地点多角色合并为一段连贯场景叙述）
         events: list[Event] = list(injected_events)
-        for resolved in resolved_actions:
-            event = await self.narrator.narrate(
-                proposal=resolved.proposal,
-                world_name=self.world.name,
-                tick=current_tick,
-                location=resolved.new_state.get("location_id", "未知"),
-                world_setting=self.world.setting,
-            )
+        narrated = await self._narrate_grouped(resolved_actions, current_tick)
+        for event in narrated:
             events.append(event)
             self.event_history.append(event)
 
@@ -217,6 +211,67 @@ class Simulator:
                     agent.memories = self.character_memories[char_name]
             except Exception:
                 pass  # 反思失败不阻塞 tick
+
+    async def _narrate_grouped(self, resolved_actions: list[ResolvedAction], current_tick: int) -> list[Event]:
+        """按地点分组叙述。
+
+        - 单角色地点：单独叙述（保持原行为）。
+        - 同地点多角色：合并为一段连贯场景叙述，产出一个场景 Event，
+          participants 记录在场全部角色（便于记忆写入覆盖每个人）。
+        """
+        # 按角色移动后的地点分组，保留原始索引以取角色名
+        groups: dict[str, list[int]] = {}
+        for idx, resolved in enumerate(resolved_actions):
+            loc = resolved.new_state.get("location_id", "未知")
+            groups.setdefault(loc, []).append(idx)
+
+        events: list[Event] = []
+        for loc, idxs in groups.items():
+            if len(idxs) == 1:
+                idx = idxs[0]
+                resolved = resolved_actions[idx]
+                event = await self.narrator.narrate(
+                    proposal=resolved.proposal,
+                    world_name=self.world.name,
+                    tick=current_tick,
+                    location=loc,
+                    world_setting=self.world.setting,
+                )
+                events.append(event)
+                continue
+
+            # 同地点多角色：合并叙述
+            proposals = [resolved_actions[i].proposal for i in idxs]
+            participants = [self.agents[i].character.name for i in idxs]
+            narration = await self.narrator.narrate_group(
+                proposals=proposals,
+                participants=participants,
+                world_name=self.world.name,
+                location=loc,
+                world_setting=self.world.setting,
+            )
+            event_type = self._dominant_event_type(proposals)
+            events.append(Event(
+                world_id=self.world.id,
+                tick=current_tick,
+                type=event_type,
+                participants=participants,
+                location_id=loc,
+                payload={"scene": [p.to_dict() for p in proposals]},
+                narration=narration,
+            ))
+        return events
+
+    def _dominant_event_type(self, proposals: list[ActionProposal]) -> EventType:
+        """从一组行动中选出主导事件类型：冲突 > 对话 > 合作 > 通用行动。"""
+        types = [p.action_type for p in proposals]
+        if "conflict" in types:
+            return EventType.conflict
+        if "dialogue" in types:
+            return EventType.dialogue
+        if "cooperation" in types:
+            return EventType.relationship_change
+        return EventType.action
 
     def _update_relationships(self, actions: list[ResolvedAction]) -> None:
         """根据行动类型更新角色间关系（简化版：同地点的角色互相影响）。"""

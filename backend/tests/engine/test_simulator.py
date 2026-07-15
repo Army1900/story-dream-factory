@@ -92,7 +92,12 @@ async def test_multi_character_tick():
     llm = _mock_llm_multi()
     sim = Simulator(_make_world_multi(), _make_chars(), llm)
     events = await sim.tick()
-    assert len(events) == 3  # 三个角色各一个事件
+    # 艾伦+贝拉 同在「酒馆」→ 合并为 1 个场景事件；凯尔在「谋士塔」→ 1 个单独事件
+    assert len(events) == 2
+    # 应有一个事件同时含艾伦和贝拉（同地点合并）
+    merged = [e for e in events if "艾伦" in (e.participants or []) and "贝拉" in (e.participants or [])]
+    assert len(merged) == 1
+    assert merged[0].narration  # 合并叙述非空
 
 @pytest.mark.asyncio
 async def test_multi_tick_advances_clock_once():

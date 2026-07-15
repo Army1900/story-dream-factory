@@ -74,13 +74,63 @@ async def test_complete_json_parses_structured_output():
 
     with patch("httpx.AsyncClient.post", mock_post):
         result = await gw.complete_json(
-            messages=[{"role": "user", "content": "生成一个角色"}]
+            messages=[{"role": "system", "content": "你是角色生成器"}, {"role": "user", "content": "生成一个角色"}]
         )
 
     assert result == payload
-    # 验证 response_format 被注入请求体
     sent = mock_post.call_args.kwargs["json"]
-    assert sent["response_format"] == {"type": "json_object"}
+    assert sent["max_tokens"] == 1024  # 默认 max_tokens 被透传到请求体
+    assert "JSON" in sent["messages"][0]["content"]  # JSON 输出指令追加到 system message
+    assert "response_format" not in sent  # 不再用 response_format（coding/paas/v4 不支持）
+    mock_post.assert_awaited_once()  # 解析成功，无需重试
+
+
+@pytest.mark.asyncio
+async def test_complete_passes_max_tokens_override():
+    gw = LLMGateway(routing=_make_routing(), api_key="sk-test")
+    mock_post = AsyncMock(return_value=_mock_response("ok"))
+
+    with patch("httpx.AsyncClient.post", mock_post):
+        await gw.complete(messages=[{"role": "user", "content": "hi"}], max_tokens=512)
+
+    sent = mock_post.call_args.kwargs["json"]
+    assert sent["max_tokens"] == 512  # 调用方覆盖生效
+
+
+@pytest.mark.asyncio
+async def test_complete_json_retries_on_empty_then_succeeds():
+    """首次返回空字符串 → 重试一次（更强 prompt）→ 成功解析。"""
+    gw = LLMGateway(routing=_make_routing(), api_key="sk-test")
+    payload = {"intent": "质问", "action_type": "dialogue"}
+    mock_post = AsyncMock(
+        side_effect=[
+            _mock_response(""),  # 首次空
+            _mock_response(json.dumps(payload, ensure_ascii=False)),  # 重试成功
+        ]
+    )
+
+    with patch("httpx.AsyncClient.post", mock_post):
+        result = await gw.complete_json(messages=[{"role": "system", "content": "你是决策器"}])
+
+    assert result == payload
+    assert mock_post.await_count == 2  # 重试了一次
+    # 重试的 system message 应含更强的 JSON 提示
+    retry_sent = mock_post.await_args_list[1].kwargs["json"]
+    assert "非空" in retry_sent["messages"][0]["content"]
+
+
+@pytest.mark.asyncio
+async def test_complete_json_raises_when_retry_also_fails():
+    gw = LLMGateway(routing=_make_routing(), api_key="sk-test")
+    mock_post = AsyncMock(
+        return_value=_mock_response("not a json at all")  # 两次都无法解析
+    )
+
+    with patch("httpx.AsyncClient.post", mock_post):
+        with pytest.raises(ValueError):
+            await gw.complete_json(messages=[{"role": "system", "content": "你是决策器"}])
+
+    assert mock_post.await_count == 2  # 重试了一次后报错
 
 
 @pytest.mark.asyncio
