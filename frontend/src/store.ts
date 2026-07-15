@@ -66,6 +66,7 @@ interface State {
   events: SimEvent[]
   characters: string[]
   simError: string | null
+  loadHistory: (worldId: string) => Promise<void>
   // websocket auto-advance
   ws: WebSocket | null
   wsStatus: 'disconnected' | 'connecting' | 'connected' | 'error'
@@ -156,6 +157,27 @@ export const useStore = create<State>((set, get) => ({
       simError: null,
       autoPlay: false,
     })
+    // 异步加载历史事件（从 YAML 文件）
+    get().loadHistory(w.id)
+  },
+
+  loadHistory: async (worldId: string) => {
+    try {
+      const r = await fetch(`/worlds/${worldId}/simulate/events`)
+      const j = await r.json()
+      const events = j.events ?? []
+      if (events.length > 0) {
+        // 有历史事件 → 直接显示，标记为已启动
+        const tick = events[events.length - 1].tick ?? 0
+        set({
+          events: events,
+          simStarted: true,
+          tick: tick,
+        })
+      }
+    } catch {
+      // 加载失败不影响进入世界
+    }
   },
 
   checkHealth: async () => {

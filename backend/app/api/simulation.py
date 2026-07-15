@@ -142,3 +142,11 @@ def simulation_status(world_id: str):
         "total_events": len(sim.event_history),
         "recent_narrations": [e.narration for e in sim.event_history[-5:]],
     }
+
+
+@router.get("/events")
+def get_all_events(world_id: str):
+    """读取世界目录下所有历史事件（从 YAML 文件加载，不需要模拟器在内存中）。"""
+    world_dir = _world_dir(world_id)
+    events = _store.load_all_events(world_dir)
+    return {"events": events, "total": len(events)}
