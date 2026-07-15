@@ -113,6 +113,15 @@ class WorldStore:
         data = _read_yaml(Path(world_dir) / "directives.yaml")
         return data or []
 
+    # -------------------------------------------------------------- story_state.yaml
+    def save_story_state(self, world_dir, state: dict) -> None:
+        """把戏剧状态（叙事弧/悬念/张力/摘要）写入 ``story_state.yaml``。"""
+        _write_yaml(Path(world_dir) / "story_state.yaml", state)
+
+    def load_story_state(self, world_dir) -> dict | None:
+        """读取 ``story_state.yaml``；不存在返回 None。"""
+        return _read_yaml(Path(world_dir) / "story_state.yaml")
+
     # ------------------------------------------------------------------- listing
     def list_worlds(self, worlds_dir) -> list[str]:
         """扫描 ``worlds_dir`` 下所有含 ``world.yaml`` 的子目录名，返回排序后的列表。"""
