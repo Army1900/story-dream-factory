@@ -145,20 +145,34 @@ export const useStore = create<State>((set, get) => ({
     })
   },
 
-  openWorld: (w) => {
+  openWorld: async (w) => {
     get().disconnectWS()
     set({
       view: 'sim',
       selectedWorld: w,
       simStarted: false,
       events: [],
-      characters: w.characters ?? [],
+      characters: [],
       tick: w.clock_tick ?? 0,
       simError: null,
       autoPlay: false,
     })
-    // 异步加载历史事件（从 YAML 文件）
-    get().loadHistory(w.id)
+    // 异步加载完整世界数据（角色/规则/设定）+ 历史事件
+    try {
+      // 1. 加载完整世界数据
+      const wr = await fetch(`/worlds/${w.id}`)
+      const wd = await wr.json()
+      const chars = (wd.characters ?? []).map((c: any) => c.name ?? c)
+      set({
+        selectedWorld: { ...w, ...wd },
+        characters: chars,
+        tick: wd.clock_tick ?? 0,
+      })
+      // 2. 加载历史事件
+      await get().loadHistory(w.id)
+    } catch {
+      // 加载失败不影响进入世界
+    }
   },
 
   loadHistory: async (worldId: string) => {
@@ -167,7 +181,6 @@ export const useStore = create<State>((set, get) => ({
       const j = await r.json()
       const events = j.events ?? []
       if (events.length > 0) {
-        // 有历史事件 → 直接显示，标记为已启动
         const tick = events[events.length - 1].tick ?? 0
         set({
           events: events,
