@@ -3,6 +3,9 @@ import asyncio
 from app.agents.character_agent import CharacterAgent
 from app.agents.narrator import Narrator
 from app.agents.proposal import ActionProposal
+from app.agents.scene_director import SceneDirector
+from app.agents.master_narrator import MasterNarrator
+from app.engine.story_state import StoryStateManager
 from app.physics.engine import PhysicsEngine, ResolvedAction
 from app.physics.rules import update_relationship
 from app.models.world import World
@@ -12,7 +15,16 @@ from app.models.enums import EventType
 
 
 class Simulator:
-    """模拟引擎（M4 多角色版）：并行决策→物理裁决→叙述。"""
+    """模拟引擎（M4 多角色版）：并行决策→物理裁决→叙述。
+
+    叙事模式由 ``world_dir`` 决定（向后兼容）：
+
+    - ``world_dir=None``：**旧路径**。逐角色 / 按地点分组的 Narrator 叙述，
+      无 SceneDirector、无 StoryStateManager。行为与改造前完全一致。
+    - ``world_dir=<path>``：**新路径**。每拍先由 SceneDirector 决定戏剧方向，
+      角色决策带上场景上下文 + 叙事摘要，再由 MasterNarrator 写一段连贯的
+      小说节选，最后用 StoryStateManager 更新叙事弧 / 摘要 / 悬念。
+    """
 
     def __init__(self, world: World, characters: list[Character], llm_gateway,
                  world_dir: str | None = None):
@@ -27,6 +39,8 @@ class Simulator:
         self.directives: list[dict] = []
         # 文件系统持久化目录；None 时行为完全不变（向后兼容）
         self.world_dir = world_dir
+        # 戏剧状态管理器：仅当 world_dir 接线时启用（落盘到 story_state.yaml）
+        self.story_manager = StoryStateManager(world_dir) if world_dir else None
 
     def _build_snapshot(self) -> dict:
         locs = {}
@@ -41,6 +55,7 @@ class Simulator:
 
     async def tick(self) -> list[Event]:
         current_tick = self.world.clock_tick
+        narration = ""  # 本拍主叙述（新路径下由 MasterNarrator 产出）
 
         # 处理导演注入（在角色决策前）
         injected_events: list[Event] = []
@@ -72,10 +87,38 @@ class Simulator:
 
         snapshot = self._build_snapshot()
 
-        # ① 角色并行决策
-        proposals = await asyncio.gather(*[a.decide(snapshot, current_tick=current_tick) for a in self.agents])
+        # 是否走增强叙事路径（world_dir 接线 + story_manager 可用）
+        enhanced = self.world_dir is not None and self.story_manager is not None
 
-        # ② 物理引擎裁决
+        # ① 场景导演：决定这一拍的戏剧方向（仅新路径）
+        direction: dict | None = None
+        story_state: dict = {}
+        if enhanced:
+            story_state = self.story_manager.load()
+            try:
+                direction = await SceneDirector(self.llm).direct(
+                    self._world_brief(), story_state, current_tick, self._char_briefs(),
+                )
+            except Exception:
+                direction = None  # 导演失败不阻塞 tick
+
+        # ② 角色并行决策（新路径带上场景上下文 + 叙事摘要）
+        if direction is not None:
+            proposals = await asyncio.gather(*[
+                a.decide(
+                    snapshot,
+                    current_tick=current_tick,
+                    scene_context=direction,
+                    narrative_summary=story_state.get("narrative_summary", ""),
+                )
+                for a in self.agents
+            ])
+        else:
+            proposals = await asyncio.gather(*[
+                a.decide(snapshot, current_tick=current_tick) for a in self.agents
+            ])
+
+        # ③ 物理引擎裁决
         resolved_actions: list[ResolvedAction] = []
         for agent, proposal in zip(self.agents, proposals):
             resolved = self.physics.resolve(
@@ -87,17 +130,44 @@ class Simulator:
             agent.character.state = resolved.new_state
             resolved_actions.append(resolved)
 
-        # ③ 关系变化（基于行动类型）
+        # ④ 关系变化（基于行动类型）
         self._update_relationships(resolved_actions)
 
-        # ④ 世界意识叙述（按地点分组：同地点多角色合并为一段连贯场景叙述）
+        # ⑤ 叙述
         events: list[Event] = list(injected_events)
-        narrated = await self._narrate_grouped(resolved_actions, current_tick)
-        for event in narrated:
+        if direction is not None:
+            # 新路径：MasterNarrator 写一段连贯小说节选（整拍一个 Event）
+            narration = await MasterNarrator(self.llm).narrate(
+                scene_direction=direction,
+                proposals=proposals,
+                resolved=resolved_actions,
+                world=self._world_brief(),
+                story_state=story_state,
+                tick=current_tick,
+                participants=[a.character.name for a in self.agents],
+            )
+            event = Event(
+                world_id=self.world.id,
+                tick=current_tick,
+                type=EventType.action,
+                participants=[c.name for c in self.characters],
+                location_id=snapshot["location"],
+                payload={
+                    "scene_type": direction.get("scene_type", ""),
+                    "scene_direction": direction,
+                },
+                narration=narration,
+            )
             events.append(event)
             self.event_history.append(event)
+        else:
+            # 旧路径：按地点分组的 Narrator 叙述（行为不变）
+            narrated = await self._narrate_grouped(resolved_actions, current_tick)
+            for event in narrated:
+                events.append(event)
+                self.event_history.append(event)
 
-        # ⑤ 记忆写入（从事件提取）
+        # ⑥ 记忆写入（从事件提取）
         from app.memory.writer import MemoryWriter
         writer = MemoryWriter()
         char_names = [c.name for c in self.characters]
@@ -108,23 +178,55 @@ class Simulator:
             for m in new_mems:
                 self.character_memories.setdefault(m.character_id, []).append(m)
 
-        # ⑥ 修复记忆回路：把累积记忆同步回对应 agent，让下一 tick 能检索到
+        # ⑦ 修复记忆回路：把累积记忆同步回对应 agent，让下一 tick 能检索到
         # （此前 agent.memories 恒空是 bug）
         for agent in self.agents:
             char_name = agent.character.name
             new_mems = self.character_memories.get(char_name, [])
             agent.memories = new_mems
 
-        # ⑥b 反思（每 interval tick 触发一次，用 LLM 生成高层洞察）
+        # ⑧ 反思（每 interval tick 触发一次，用 LLM 生成高层洞察）
         await self._try_reflect(current_tick)
+
+        # ⑨ 更新戏剧状态（仅新路径）
+        if enhanced and self.story_manager is not None and direction is not None:
+            try:
+                await self.story_manager.update_after_tick(
+                    story_state, narration, current_tick, self.llm,
+                )
+            except Exception:
+                pass  # 戏剧状态更新失败不阻塞 tick
 
         self.world.clock_tick += 1
 
-        # ⑦ 文件持久化（仅当 world_dir 已接线）
+        # ⑩ 文件持久化（仅当 world_dir 已接线）
         if self.world_dir:
             self._persist(current_tick, events)
 
         return events
+
+    # ----------------------------------------------------------- 世界/角色摘要
+    def _world_brief(self) -> dict:
+        """供 SceneDirector / MasterNarrator 使用的世界简报。"""
+        return {
+            "name": self.world.name,
+            "setting": self.world.setting,
+            "vision": self.world.vision,
+            "rules": self.world.rules or [],
+        }
+
+    def _char_briefs(self) -> list[dict]:
+        """供 SceneDirector 使用的角色状态简报。"""
+        briefs: list[dict] = []
+        for c in self.characters:
+            state = c.state or {}
+            briefs.append({
+                "name": c.name,
+                "location": state.get("location_id", "未知"),
+                "mood": state.get("mood", ""),
+                "goal": (c.goals or {}).get("short_term", ""),
+            })
+        return briefs
 
     # ----------------------------------------------------------- 持久化辅助
     def _persist(self, current_tick: int, events: list[Event]) -> None:
